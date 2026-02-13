@@ -1,0 +1,189 @@
+const SHEET_ID = '1-OLtX148Img-7cP1pUbjntNBD3CUiLy3lTvVjovlpac';
+const SHEET_NAME = 'Sheet1'; 
+const API_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&t=${new Date().getTime()}`;
+
+let allQuestions = [];
+let currentQuiz = [];
+let currentIndex = 0;
+let timer;
+let studentName = "";
+let qStatus = []; 
+let userAnswers = []; 
+
+window.onload = function() {
+    // 1. Loading screen dikhao
+    document.getElementById('loading-overlay').style.display = 'flex';
+    
+    // 2. Data fetch shuru karo
+    fetchData();
+};
+
+function fetchData() {
+    console.log("Fetching Data...");
+    fetch(API_URL).then(res => res.text()).then(data => {
+        const json = JSON.parse(data.substring(47).slice(0, -2));
+        allQuestions = json.table.rows.map(row => ({
+            q: row.c[0]?.v, 
+            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v],
+            ans: row.c[5]?.v, 
+            sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", 
+            expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai."
+        })).filter(i => i.q && i.q !== "Question");
+        
+        console.log("Questions Loaded:", allQuestions.length);
+
+        // ✅ DATA LOAD HONE KE BAAD HI LOADING SCREEN HATEGI
+        document.getElementById('loading-overlay').style.display = 'none';
+
+        // Check login
+        const saved = localStorage.getItem('studentName');
+        if(saved) { studentName = saved; showDashboard(saved); }
+        else { document.getElementById('login-screen').style.display = 'block'; }
+
+    }).catch(err => {
+        console.error("Error:", err);
+        // Agar error aaye to user ko batao
+        document.querySelector('.loading-text').innerText = "Internet Error! Please Refresh.";
+        document.querySelector('.loading-text').style.color = "red";
+    });
+}
+
+// ... BAAKI LOGIC SAME TO SAME ...
+
+function openTestSelector(baseSubject, mins) {
+    const availableTests = [...new Set(
+        allQuestions
+        .map(q => q.sub)
+        .filter(s => s.toLowerCase().includes(baseSubject.toLowerCase()))
+    )].sort(); 
+
+    if (availableTests.length === 0) {
+        return alert(`❌ '${baseSubject}' ke sawal abhi uplabdh nahi hain.`);
+    }
+
+    if (availableTests.length === 1) {
+        startQuiz(availableTests[0], mins);
+        return;
+    }
+
+    const listContainer = document.getElementById('test-list-container');
+    listContainer.innerHTML = "";
+    document.getElementById('modal-subject-title').innerText = `Select ${baseSubject} Test`;
+
+    availableTests.forEach(testName => {
+        const btn = document.createElement('button');
+        btn.className = 'test-list-btn';
+        btn.innerText = `📝 ${testName}`; 
+        btn.onclick = () => {
+            closeTestSelector();
+            startQuiz(testName, mins);
+        };
+        listContainer.appendChild(btn);
+    });
+
+    document.getElementById('test-selector-modal').style.display = 'flex';
+}
+
+function closeTestSelector() {
+    document.getElementById('test-selector-modal').style.display = 'none';
+}
+
+function startQuiz(exactSubjectName, mins) {
+    currentQuiz = allQuestions.filter(i => i.sub === exactSubjectName);
+    
+    if(currentQuiz.length === 0) return alert("Error: Questions not found!");
+    
+    currentIndex = 0;
+    qStatus = new Array(currentQuiz.length).fill(0);
+    userAnswers = new Array(currentQuiz.length).fill(null);
+    document.getElementById('subject-label').innerText = exactSubjectName;
+    
+    switchScreen('quiz-screen');
+    loadQuestion();
+    renderPalette();
+    startTimer(mins);
+}
+
+function loadQuestion() {
+    const q = currentQuiz[currentIndex];
+    document.getElementById('q-text').innerText = `Q.${currentIndex + 1} ${q.q}`;
+    const optDiv = document.getElementById('q-options');
+    optDiv.innerHTML = "";
+    q.opt.forEach(o => {
+        if(o) {
+            const btn = document.createElement('button');
+            btn.className = `opt-btn ${userAnswers[currentIndex] === o ? 'selected' : ''}`;
+            btn.innerText = o;
+            btn.onclick = () => {
+                userAnswers[currentIndex] = o;
+                qStatus[currentIndex] = 1; 
+                renderPalette();
+                loadQuestion();
+            };
+            optDiv.appendChild(btn);
+        }
+    });
+    if(qStatus[currentIndex] === 0) qStatus[currentIndex] = 2; 
+    renderPalette();
+}
+function renderPalette() {
+    const pal = document.getElementById('q-palette');
+    pal.innerHTML = "";
+    qStatus.forEach((status, idx) => {
+        const btn = document.createElement('div');
+        btn.className = 'q-num';
+        if(idx === currentIndex) btn.classList.add('current');
+        if(status === 1) btn.classList.add('answered');
+        if(status === 2) btn.classList.add('skipped');
+        if(status === 3) btn.classList.add('reviewed');
+        btn.innerText = idx + 1;
+        btn.onclick = () => { currentIndex = idx; loadQuestion(); };
+        pal.appendChild(btn);
+    });
+}
+function nextQuestion() { if(currentIndex < currentQuiz.length - 1) { currentIndex++; loadQuestion(); } }
+function prevQuestion() { if(currentIndex > 0) { currentIndex--; loadQuestion(); } }
+function markReview() { qStatus[currentIndex] = 3; renderPalette(); nextQuestion(); }
+function startTimer(m) {
+    let s = m * 60;
+    clearInterval(timer);
+    timer = setInterval(() => {
+        let mins = Math.floor(s/60), secs = s%60;
+        document.getElementById('time-left').innerText = `${mins}:${secs<10?'0'+secs:secs}`;
+        if(s-- <= 0) { clearInterval(timer); endQuiz(); }
+    }, 1000);
+}
+function confirmSubmit() { if(confirm("Finish Test?")) endQuiz(); }
+function endQuiz() {
+    clearInterval(timer);
+    let finalScore = 0;
+    const revBox = document.getElementById('review-box');
+    revBox.innerHTML = "";
+    currentQuiz.forEach((q, i) => {
+        const userAnswer = userAnswers[i] ? userAnswers[i].toString().trim().toLowerCase() : "";
+        const correctAnswer = q.ans ? q.ans.toString().trim().toLowerCase() : "";
+        const isCorrect = (userAnswer !== "" && userAnswer === correctAnswer);
+        if(isCorrect) finalScore++;
+        const card = document.createElement('div');
+        card.className = `review-card ${isCorrect ? 'correct' : 'wrong'}`;
+        card.innerHTML = `<b>Q.${i+1}: ${q.q}</b><br><span style="color:${isCorrect?'green':'red'}">Aapne: ${userAnswers[i] || 'Nahi kiya'}</span> | <span style="color:green; font-weight:bold;">Sahi: ${q.ans}</span><div class="expl-box">💡 ${q.expl}</div>`;
+        revBox.appendChild(card);
+    });
+    document.getElementById('final-score').innerText = `Marks: ${finalScore} / ${currentQuiz.length}`;
+    switchScreen('result-screen');
+}
+function login() {
+    const n = document.getElementById('student-name').value;
+    if(!n) return alert("Naam likhein");
+    studentName = n; localStorage.setItem('studentName', n);
+    showDashboard(n);
+}
+function showDashboard(n) { document.getElementById('display-name').innerText = n; switchScreen('dashboard-screen'); }
+function switchScreen(id) {
+    ['login-screen', 'dashboard-screen', 'quiz-screen', 'result-screen'].forEach(s => {
+        const el = document.getElementById(s);
+        if(el) el.style.display = (s === id) ? 'block' : 'none';
+        if(id === 'dashboard-screen') document.getElementById('test-selector-modal').style.display = 'none';
+    });
+}
+function logout() { localStorage.clear(); location.reload(); }

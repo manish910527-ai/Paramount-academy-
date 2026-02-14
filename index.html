@@ -16,42 +16,35 @@
     <style>
         :root { --primary: #2563eb; --bg: #f3f4f6; --success: #22c55e; --danger: #ef4444; --review: #facc15; }
         
-        /* ✅ APP LOCK STYLES (NO FULL PAGE SCROLL) */
+        /* ✅ FIXED APP LAYOUT (NO BOUNCE, NO PAGE SCROLL) */
         body { 
             font-family: 'Poppins', sans-serif; 
             background: var(--bg); 
             margin: 0; 
-            height: 100dvh; /* Screen ke barabar fix height */
+            height: 100vh; /* Mobile screen height */
             display: flex; 
             flex-direction: column; 
-            overflow: hidden; /* Page drop-down band */
-            overscroll-behavior: none; /* Bounce effect band */
+            overflow: hidden; /* Page overflow band */
+            overscroll-behavior-y: none; /* Pull-to-refresh bounce band */
             user-select: none; 
         }
         
-        /* HEADER FIXED */
+        /* HEADER (COMPACT) */
         header { 
-            background: white; color: var(--primary); padding: 10px; text-align: center; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-bottom: 3px solid var(--primary); 
+            background: white; color: var(--primary); padding: 8px; text-align: center; 
+            box-shadow: 0 4px 5px rgba(0,0,0,0.05); border-bottom: 3px solid var(--primary); 
             flex-shrink: 0; z-index: 100; 
+            display: flex; align-items: center; justify-content: center; gap: 10px;
         }
-        .logo-img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 5px; }
-        header h1 { margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: #1e3a8a; }
+        .logo-img { width: 40px; height: 40px; object-fit: contain; }
+        header h1 { margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; color: #1e3a8a; }
 
         /* SCROLLABLE MIDDLE CONTAINER */
         .container { 
             flex: 1; 
-            overflow-y: auto; /* Sirf beech ka hissa scroll hoga */
+            overflow-y: auto; /* Sirf ye hissa scroll hoga */
             padding: 15px; 
-            padding-bottom: 30px;
-        }
-
-        /* FOOTER FIXED */
-        .app-footer {
-            background: #fdfefe; border-top: 3px solid #0056b3; padding: 15px; text-align: center; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            border-radius: 15px 15px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); 
-            flex-shrink: 0; z-index: 100;
+            padding-bottom: 50px; /* Niche thodi extra jagah taaki button na chupe */
         }
 
         /* Screens */
@@ -85,17 +78,19 @@
         .close-modal { margin-top: 10px; background: #ef4444; color: white; padding: 8px 20px; border: none; border-radius: 20px; cursor: pointer; }
 
         /* Quiz Layout */
-        .timer-bar { background: #1f2937; color: white; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; position: sticky; top: 0; z-index: 10; }
-        .palette-area { background: white; padding: 10px; border-radius: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(35px, 1fr)); gap: 6px; max-height: 150px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #ddd; }
+        .timer-bar { background: #1f2937; color: white; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .palette-area { background: white; padding: 10px; border-radius: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(35px, 1fr)); gap: 6px; max-height: 120px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #ddd; }
         .q-num { width: 35px; height: 35px; border-radius: 5px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; background: #eee; }
         .q-num.current { border: 2px solid var(--primary); transform: scale(1.1); font-weight: bold; }
         .q-num.answered { background: var(--success); color: white; border: none; }
         .q-num.skipped { background: var(--danger); color: white; border: none; }
         .q-num.reviewed { background: var(--review); color: black; border: none; }
-        .question-area { background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; min-height: 180px; }
-        .opt-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; text-align: left; background: white; cursor: pointer; font-size: 15px; }
+        
+        .question-area { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        .opt-btn { display: block; width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; text-align: left; background: white; cursor: pointer; font-size: 14px; }
         .opt-btn.selected { background: #dbeafe; border-color: var(--primary); font-weight: bold; }
-        .nav-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        
+        .nav-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 20px; }
         .btn-review { background: var(--review); color: black; }
         .btn-prev { background: #6b7280; }
         .review-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #ddd; }
@@ -113,7 +108,7 @@
 
     <div id="loading-overlay">
         <div class="spinner"></div>
-        <div class="loading-text">Questions Load Ho Rahe Hain...</div>
+        <div class="loading-text">Loading...</div>
     </div>
 
     <div class="container">
@@ -133,7 +128,7 @@
             
             <div class="card flt-card" onclick="openTestSelector('FLT', 120)">
                 <h2 style="margin:0;">🏆 Full Length Tests</h2>
-                <p>Click to Select Test</p>
+                <p style="margin:5px 0 0 0; font-size: 13px;">Click to Select Test</p>
             </div>
 
             <h3 style="margin-top:20px; color:#374151;">📚 Sectional Tests</h3>
@@ -160,43 +155,38 @@
             </div>
             <div class="palette-area" id="q-palette"></div>
             <div class="question-area">
-                <div id="q-text" style="font-weight:600; font-size:17px; margin-bottom:15px; line-height: 1.5;">Question Loading...</div>
-                <div id="q-options"></div>
+                <div id="q-text" style="font-weight:600; font-size:16px; line-height: 1.5;">Question Loading...</div>
+                <div id="q-options" style="margin-top: 15px;"></div>
             </div>
             <div class="nav-btns">
                 <button class="btn-main btn-prev" onclick="prevQuestion()">⬅ Back</button>
                 <button class="btn-main" onclick="nextQuestion()">Next ➡</button>
                 <button class="btn-main btn-review" onclick="markReview()">⭐ Review</button>
-                <button class="btn-main" style="background:#1f2937;" onclick="confirmSubmit()">Finish Test</button>
+                <button class="btn-main" style="background:#1f2937;" onclick="confirmSubmit()">Finish</button>
             </div>
         </div>
 
         <div id="result-screen">
             <div class="card" style="text-align:center;">
-                <h2 id="final-score" style="color:var(--primary); font-size:32px;">0 / 0</h2>
-                <button class="btn-main" style="background:#9333ea; margin-bottom:10px;" onclick="window.open('https://forms.gle/6sgNBohDaiY2TroSA')">📤 Submit Score to Admin</button>
+                <h2 id="final-score" style="color:var(--primary); font-size:32px; margin: 10px 0;">0 / 0</h2>
+                <button class="btn-main" style="background:#9333ea; margin-bottom:10px;" onclick="window.open('https://forms.gle/6sgNBohDaiY2TroSA')">📤 Submit Score</button>
                 <button class="btn-main" onclick="location.reload()">🏠 Go Home</button>
             </div>
-            <h3>Answer Key & Solutions</h3>
+            <h3 style="margin-top: 15px;">Answer Key & Solutions</h3>
             <div id="review-box"></div>
         </div>
     </div> <script src="main.js"></script>
 
-    <div class="app-footer">
-        <p style="font-size: 18px; color: #333; margin: 0 0 10px 0; font-weight: 700;">
-            🚀 Powered by <span style="color: #0056b3;">Chandan Sir</span>
-        </p>
-
-        <div style="background: #fff; padding: 10px; border-radius: 12px; border: 1px solid #e1e8ed; display: inline-block; width: 100%; max-width: 350px; text-align: left;">
-            <p style="font-size: 14px; margin: 0 0 5px 0; color: #d32f2f; font-weight: bold; text-align: center;">📢 Offline Batches Join Karein</p>
-            <p style="font-size: 13px; margin: 0; color: #2c3e50; text-align: center;">
-                <b>Paramount Academy, Khandwa</b><br>
-                📍 इंदिरा चौक (Indira Chowk)
-            </p>
-            
-            <div style="margin-top: 8px; display: flex; justify-content: space-between; gap: 5px;">
-                <a href="tel:9981305131" style="flex: 1; text-align: center; text-decoration: none; color: white; background: #28a745; padding: 8px; border-radius: 6px; font-weight: bold; font-size: 13px;">📞 9981305131</a>
-                <a href="tel:9098738882" style="flex: 1; text-align: center; text-decoration: none; color: white; background: #28a745; padding: 8px; border-radius: 6px; font-weight: bold; font-size: 13px;">📞 9098738882</a>
+    <div style="background: white; border-top: 2px solid #e74c3c; padding: 10px 15px; flex-shrink: 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 100;">
+        <div style="text-align: center; font-size: 11px; color: #d32f2f; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">
+            📢 Offline Batches: Paramount Academy, Khandwa
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 14px; font-weight: 700; color: #333;">
+                🚀 By <span style="color: #e74c3c;">Chandan Sir</span>
+            </div>
+            <div>
+                <a href="tel:9981305131" style="text-decoration: none; background: #28a745; color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; display: inline-block;">📞 Call Now</a>
             </div>
         </div>
     </div>

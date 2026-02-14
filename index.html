@@ -15,28 +15,51 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #2563eb; --bg: #f3f4f6; --success: #22c55e; --danger: #ef4444; --review: #facc15; }
-        body { font-family: 'Poppins', sans-serif; background: var(--bg); margin: 0; padding-bottom: 30px; user-select: none; }
         
-        header { background: white; color: var(--primary); padding: 10px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-bottom: 3px solid var(--primary); }
+        /* ✅ APP LOCK STYLES (NO FULL PAGE SCROLL) */
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            height: 100dvh; /* Screen ke barabar fix height */
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; /* Page drop-down band */
+            overscroll-behavior: none; /* Bounce effect band */
+            user-select: none; 
+        }
+        
+        /* HEADER FIXED */
+        header { 
+            background: white; color: var(--primary); padding: 10px; text-align: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-bottom: 3px solid var(--primary); 
+            flex-shrink: 0; z-index: 100; 
+        }
         .logo-img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 5px; }
         header h1 { margin: 0; font-size: 20px; font-weight: 800; text-transform: uppercase; color: #1e3a8a; }
 
-        .container { max-width: 800px; margin: 0 auto; padding: 15px; }
+        /* SCROLLABLE MIDDLE CONTAINER */
+        .container { 
+            flex: 1; 
+            overflow-y: auto; /* Sirf beech ka hissa scroll hoga */
+            padding: 15px; 
+            padding-bottom: 30px;
+        }
+
+        /* FOOTER FIXED */
+        .app-footer {
+            background: #fdfefe; border-top: 3px solid #0056b3; padding: 15px; text-align: center; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            border-radius: 15px 15px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); 
+            flex-shrink: 0; z-index: 100;
+        }
 
         /* Screens */
         #login-screen, #dashboard-screen, #quiz-screen, #result-screen { display: none; }
 
-        /* --- LOADING SCREEN (NEW) --- */
-        #loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: white; z-index: 9999; display: flex;
-            flex-direction: column; justify-content: center; align-items: center;
-        }
-        .spinner {
-            border: 5px solid #f3f3f3; border-top: 5px solid var(--primary);
-            border-radius: 50%; width: 50px; height: 50px;
-            animation: spin 1s linear infinite; margin-bottom: 15px;
-        }
+        /* LOADING SCREEN */
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .spinner { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { font-weight: bold; color: var(--primary); font-size: 18px; }
 
@@ -53,25 +76,16 @@
         .sub-card:active { transform: scale(0.95); background: #eff6ff; }
 
         /* TEST SELECTOR MODAL */
-        #test-selector-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background: white; width: 85%; max-width: 400px; padding: 20px; border-radius: 15px;
-            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popUp 0.3s ease;
-        }
+        #test-selector-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 85%; max-width: 400px; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: popUp 0.3s ease; }
         @keyframes popUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #374151; }
-        .test-list-btn {
-            display: block; width: 100%; padding: 12px; margin: 8px 0; background: #f3f4f6;
-            border: 1px solid #ddd; border-radius: 8px; text-align: left; cursor: pointer; font-weight: 600;
-        }
+        .test-list-btn { display: block; width: 100%; padding: 12px; margin: 8px 0; background: #f3f4f6; border: 1px solid #ddd; border-radius: 8px; text-align: left; cursor: pointer; font-weight: 600; }
         .test-list-btn:hover { background: #dbeafe; border-color: var(--primary); color: var(--primary); }
         .close-modal { margin-top: 10px; background: #ef4444; color: white; padding: 8px 20px; border: none; border-radius: 20px; cursor: pointer; }
 
         /* Quiz Layout */
-        .timer-bar { background: #1f2937; color: white; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; }
+        .timer-bar { background: #1f2937; color: white; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; position: sticky; top: 0; z-index: 10; }
         .palette-area { background: white; padding: 10px; border-radius: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(35px, 1fr)); gap: 6px; max-height: 150px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #ddd; }
         .q-num { width: 35px; height: 35px; border-radius: 5px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; background: #eee; }
         .q-num.current { border: 2px solid var(--primary); transform: scale(1.1); font-weight: bold; }
@@ -92,15 +106,15 @@
 </head>
 <body>
 
-    <div id="loading-overlay">
-        <div class="spinner"></div>
-        <div class="loading-text">Questions Load Ho Rahe Hain...</div>
-    </div>
-
     <header>
         <img src="logo.png" alt="Paramount" class="logo-img">
         <h1>Paramount Academy</h1>
     </header>
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Questions Load Ho Rahe Hain...</div>
+    </div>
 
     <div class="container">
         <div id="login-screen">
@@ -166,31 +180,24 @@
             <h3>Answer Key & Solutions</h3>
             <div id="review-box"></div>
         </div>
-    </div>
+    </div> <script src="main.js"></script>
 
-    <script src="main.js"></script>
-
-    <div style="background: #fdfefe; border-top: 3px solid #0056b3; padding: 25px 15px; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin-top: 30px; border-radius: 15px 15px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.05);">
-        
-        <p style="font-size: 20px; color: #333; margin-bottom: 15px; font-weight: 700;">
+    <div class="app-footer">
+        <p style="font-size: 18px; color: #333; margin: 0 0 10px 0; font-weight: 700;">
             🚀 Powered by <span style="color: #0056b3;">Chandan Sir</span>
         </p>
 
-        <div style="height: 1px; background: #eee; width: 70%; margin: 15px auto;"></div>
-
-        <div style="background: #fff; padding: 15px; border-radius: 12px; border: 1px solid #e1e8ed; display: inline-block; width: 100%; max-width: 350px;">
-            <h3 style="color: #d32f2f; margin: 0 0 10px 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">📢 Offline Batches Join Karein</h3>
-            <p style="font-size: 16px; margin: 5px 0; color: #2c3e50; line-height: 1.5;">
+        <div style="background: #fff; padding: 10px; border-radius: 12px; border: 1px solid #e1e8ed; display: inline-block; width: 100%; max-width: 350px; text-align: left;">
+            <p style="font-size: 14px; margin: 0 0 5px 0; color: #d32f2f; font-weight: bold; text-align: center;">📢 Offline Batches Join Karein</p>
+            <p style="font-size: 13px; margin: 0; color: #2c3e50; text-align: center;">
                 <b>Paramount Academy, Khandwa</b><br>
                 📍 इंदिरा चौक (Indira Chowk)
             </p>
             
-            <div style="margin-top: 15px;">
-                <a href="tel:9981305131" style="display: block; text-decoration: none; color: white; background: #28a745; padding: 10px; border-radius: 8px; margin-bottom: 8px; font-weight: bold; font-size: 16px;">📞 Call: 9981305131</a>
-                <a href="tel:9098738882" style="display: block; text-decoration: none; color: white; background: #28a745; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 16px;">📞 Call: 9098738882</a>
+            <div style="margin-top: 8px; display: flex; justify-content: space-between; gap: 5px;">
+                <a href="tel:9981305131" style="flex: 1; text-align: center; text-decoration: none; color: white; background: #28a745; padding: 8px; border-radius: 6px; font-weight: bold; font-size: 13px;">📞 9981305131</a>
+                <a href="tel:9098738882" style="flex: 1; text-align: center; text-decoration: none; color: white; background: #28a745; padding: 8px; border-radius: 6px; font-weight: bold; font-size: 13px;">📞 9098738882</a>
             </div>
-            
-            <p style="font-size: 13px; color: #666; margin-top: 10px;">(नए बैच में प्रवेश के लिए संपर्क करें)</p>
         </div>
     </div>
     

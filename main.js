@@ -48,8 +48,6 @@ function fetchData() {
     });
 }
 
-// ... BAAKI LOGIC SAME TO SAME ...
-
 function openTestSelector(baseSubject, mins) {
     const availableTests = [...new Set(
         allQuestions
@@ -88,10 +86,23 @@ function closeTestSelector() {
     document.getElementById('test-selector-modal').style.display = 'none';
 }
 
+// ✅ सवालों को मिक्स (Shuffle) करने का नया फंक्शन
+function shuffleQuestions(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]]; // Swapping
+    }
+    return array;
+}
+
 function startQuiz(exactSubjectName, mins) {
-    currentQuiz = allQuestions.filter(i => i.sub === exactSubjectName);
+    // 1. Pehle sheet se us subject ke saare sawal nikalenge
+    let filteredQuestions = allQuestions.filter(i => i.sub === exactSubjectName);
     
-    if(currentQuiz.length === 0) return alert("Error: Questions not found!");
+    if(filteredQuestions.length === 0) return alert("Error: Questions not found!");
+    
+    // 2. ✅ Yahan sawalon ko Random mix (Shuffle) kiya ja raha hai
+    currentQuiz = shuffleQuestions(filteredQuestions);
     
     currentIndex = 0;
     qStatus = new Array(currentQuiz.length).fill(0);
@@ -126,6 +137,7 @@ function loadQuestion() {
     if(qStatus[currentIndex] === 0) qStatus[currentIndex] = 2; 
     renderPalette();
 }
+
 function renderPalette() {
     const pal = document.getElementById('q-palette');
     pal.innerHTML = "";
@@ -141,9 +153,11 @@ function renderPalette() {
         pal.appendChild(btn);
     });
 }
+
 function nextQuestion() { if(currentIndex < currentQuiz.length - 1) { currentIndex++; loadQuestion(); } }
 function prevQuestion() { if(currentIndex > 0) { currentIndex--; loadQuestion(); } }
 function markReview() { qStatus[currentIndex] = 3; renderPalette(); nextQuestion(); }
+
 function startTimer(m) {
     let s = m * 60;
     clearInterval(timer);
@@ -153,7 +167,9 @@ function startTimer(m) {
         if(s-- <= 0) { clearInterval(timer); endQuiz(); }
     }, 1000);
 }
+
 function confirmSubmit() { if(confirm("Finish Test?")) endQuiz(); }
+
 function endQuiz() {
     clearInterval(timer);
     let finalScore = 0;
@@ -172,13 +188,16 @@ function endQuiz() {
     document.getElementById('final-score').innerText = `Marks: ${finalScore} / ${currentQuiz.length}`;
     switchScreen('result-screen');
 }
+
 function login() {
     const n = document.getElementById('student-name').value;
     if(!n) return alert("Naam likhein");
     studentName = n; localStorage.setItem('studentName', n);
     showDashboard(n);
 }
+
 function showDashboard(n) { document.getElementById('display-name').innerText = n; switchScreen('dashboard-screen'); }
+
 function switchScreen(id) {
     ['login-screen', 'dashboard-screen', 'quiz-screen', 'result-screen'].forEach(s => {
         const el = document.getElementById(s);
@@ -186,4 +205,6 @@ function switchScreen(id) {
         if(id === 'dashboard-screen') document.getElementById('test-selector-modal').style.display = 'none';
     });
 }
+
 function logout() { localStorage.clear(); location.reload(); }
+        

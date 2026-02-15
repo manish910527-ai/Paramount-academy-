@@ -21,7 +21,6 @@ function fetchData() {
         const json = JSON.parse(data.substring(47).slice(0, -2));
         allQuestions = json.table.rows.map(row => ({
             q: row.c[0]?.v, 
-            // ✅ खाली ऑप्शंस को हटा देगा ताकि शफलिंग में दिक्कत न हो
             opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean), 
             ans: row.c[5]?.v, 
             sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", 
@@ -68,7 +67,7 @@ function openTestSelector(baseSubject, mins) {
 
 function closeTestSelector() { document.getElementById('test-selector-modal').style.display = 'none'; }
 
-// ✅ यूनिवर्सल शफल फंक्शन (अब यह ओरिजिनल डेटा को खराब नहीं करेगा)
+// ✅ Super Shuffle Function
 function shuffleArray(array) {
     let newArray = [...array]; 
     for (let i = newArray.length - 1; i > 0; i--) {
@@ -82,15 +81,9 @@ function startQuiz(exactSubjectName, mins) {
     let filteredQuestions = allQuestions.filter(i => i.sub === exactSubjectName);
     if(filteredQuestions.length === 0) return alert("Error: Questions not found!");
     
-    // ✅ 1. हर बार सवालों की 'Deep Copy' बनाएं (ताकि पुराना क्रम सेव न रहे)
+    // Deep Copy banakar options aur questions ko shuffle karna
     let deepCopiedQuestions = JSON.parse(JSON.stringify(filteredQuestions));
-
-    // ✅ 2. हर सवाल के अंदर के ऑप्शंस (A, B, C, D) को शफल करें
-    deepCopiedQuestions.forEach(q => {
-        q.opt = shuffleArray(q.opt);
-    });
-
-    // ✅ 3. अब पूरे सवालों की लिस्ट को शफल कर दें
+    deepCopiedQuestions.forEach(q => { q.opt = shuffleArray(q.opt); });
     currentQuiz = shuffleArray(deepCopiedQuestions);
     
     currentIndex = 0;
@@ -197,3 +190,23 @@ function switchScreen(id) {
 }
 
 function logout() { localStorage.clear(); location.reload(); }
+
+// ✅ KISI BHI PAGE SE BAHAR AANE KA NAYA FUNCTION (Close Button Logic)
+function goHome() {
+    // 1. Agar test chal raha hai
+    if (document.getElementById('quiz-screen').style.display === 'block') {
+        let confirmExit = confirm("Are you sure you want to close your test?");
+        if (confirmExit) {
+            clearInterval(timer); // Timer ko rok do
+            switchScreen('dashboard-screen'); // Wapas home par bhejo
+        }
+    } 
+    // 2. Agar Result Screen par hai
+    else if (document.getElementById('result-screen').style.display === 'block') {
+        switchScreen('dashboard-screen');
+    }
+    // 3. Agar Test Select karne wala Modal khula hai
+    else if (document.getElementById('test-selector-modal').style.display === 'flex') {
+        closeTestSelector();
+    }
+}

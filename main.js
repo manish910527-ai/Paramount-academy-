@@ -11,10 +11,7 @@ let qStatus = [];
 let userAnswers = []; 
 
 window.onload = function() {
-    // 1. Loading screen dikhao
     document.getElementById('loading-overlay').style.display = 'flex';
-    
-    // 2. Data fetch shuru karo
     fetchData();
 };
 
@@ -24,25 +21,22 @@ function fetchData() {
         const json = JSON.parse(data.substring(47).slice(0, -2));
         allQuestions = json.table.rows.map(row => ({
             q: row.c[0]?.v, 
-            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v],
+            // ✅ खाली ऑप्शंस को हटा देगा ताकि शफलिंग में दिक्कत न हो
+            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean), 
             ans: row.c[5]?.v, 
             sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", 
             expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai."
         })).filter(i => i.q && i.q !== "Question");
         
         console.log("Questions Loaded:", allQuestions.length);
-
-        // ✅ DATA LOAD HONE KE BAAD HI LOADING SCREEN HATEGI
         document.getElementById('loading-overlay').style.display = 'none';
 
-        // Check login
         const saved = localStorage.getItem('studentName');
         if(saved) { studentName = saved; showDashboard(saved); }
         else { document.getElementById('login-screen').style.display = 'block'; }
 
     }).catch(err => {
         console.error("Error:", err);
-        // Agar error aaye to user ko batao
         document.querySelector('.loading-text').innerText = "Internet Error! Please Refresh.";
         document.querySelector('.loading-text').style.color = "red";
     });
@@ -50,19 +44,12 @@ function fetchData() {
 
 function openTestSelector(baseSubject, mins) {
     const availableTests = [...new Set(
-        allQuestions
-        .map(q => q.sub)
-        .filter(s => s.toLowerCase().includes(baseSubject.toLowerCase()))
+        allQuestions.map(q => q.sub).filter(s => s.toLowerCase().includes(baseSubject.toLowerCase()))
     )].sort(); 
 
-    if (availableTests.length === 0) {
-        return alert(`❌ '${baseSubject}' ke sawal abhi uplabdh nahi hain.`);
-    }
+    if (availableTests.length === 0) return alert(`❌ '${baseSubject}' ke sawal abhi uplabdh nahi hain.`);
 
-    if (availableTests.length === 1) {
-        startQuiz(availableTests[0], mins);
-        return;
-    }
+    if (availableTests.length === 1) { startQuiz(availableTests[0], mins); return; }
 
     const listContainer = document.getElementById('test-list-container');
     listContainer.innerHTML = "";
@@ -72,37 +59,39 @@ function openTestSelector(baseSubject, mins) {
         const btn = document.createElement('button');
         btn.className = 'test-list-btn';
         btn.innerText = `📝 ${testName}`; 
-        btn.onclick = () => {
-            closeTestSelector();
-            startQuiz(testName, mins);
-        };
+        btn.onclick = () => { closeTestSelector(); startQuiz(testName, mins); };
         listContainer.appendChild(btn);
     });
 
     document.getElementById('test-selector-modal').style.display = 'flex';
 }
 
-function closeTestSelector() {
-    document.getElementById('test-selector-modal').style.display = 'none';
-}
+function closeTestSelector() { document.getElementById('test-selector-modal').style.display = 'none'; }
 
-// ✅ सवालों को मिक्स (Shuffle) करने का नया फंक्शन
-function shuffleQuestions(array) {
-    for (let i = array.length - 1; i > 0; i--) {
+// ✅ यूनिवर्सल शफल फंक्शन (अब यह ओरिजिनल डेटा को खराब नहीं करेगा)
+function shuffleArray(array) {
+    let newArray = [...array]; 
+    for (let i = newArray.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]]; // Swapping
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
     }
-    return array;
+    return newArray;
 }
 
 function startQuiz(exactSubjectName, mins) {
-    // 1. Pehle sheet se us subject ke saare sawal nikalenge
     let filteredQuestions = allQuestions.filter(i => i.sub === exactSubjectName);
-    
     if(filteredQuestions.length === 0) return alert("Error: Questions not found!");
     
-    // 2. ✅ Yahan sawalon ko Random mix (Shuffle) kiya ja raha hai
-    currentQuiz = shuffleQuestions(filteredQuestions);
+    // ✅ 1. हर बार सवालों की 'Deep Copy' बनाएं (ताकि पुराना क्रम सेव न रहे)
+    let deepCopiedQuestions = JSON.parse(JSON.stringify(filteredQuestions));
+
+    // ✅ 2. हर सवाल के अंदर के ऑप्शंस (A, B, C, D) को शफल करें
+    deepCopiedQuestions.forEach(q => {
+        q.opt = shuffleArray(q.opt);
+    });
+
+    // ✅ 3. अब पूरे सवालों की लिस्ट को शफल कर दें
+    currentQuiz = shuffleArray(deepCopiedQuestions);
     
     currentIndex = 0;
     qStatus = new Array(currentQuiz.length).fill(0);
@@ -120,6 +109,7 @@ function loadQuestion() {
     document.getElementById('q-text').innerText = `Q.${currentIndex + 1} ${q.q}`;
     const optDiv = document.getElementById('q-options');
     optDiv.innerHTML = "";
+    
     q.opt.forEach(o => {
         if(o) {
             const btn = document.createElement('button');
@@ -207,4 +197,3 @@ function switchScreen(id) {
 }
 
 function logout() { localStorage.clear(); location.reload(); }
-        

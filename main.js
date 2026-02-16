@@ -30,9 +30,15 @@ function fetchData() {
         console.log("Questions Loaded:", allQuestions.length);
         document.getElementById('loading-overlay').style.display = 'none';
 
-        const saved = localStorage.getItem('studentName');
-        if(saved) { studentName = saved; showDashboard(saved); }
-        else { document.getElementById('login-screen').style.display = 'block'; }
+        // ✅ FIX: Mobile WebView ke liye LocalStorage ka Suraksha Kavach (Try-Catch)
+        try {
+            const saved = localStorage.getItem('studentName');
+            if(saved) { studentName = saved; showDashboard(saved); }
+            else { document.getElementById('login-screen').style.display = 'block'; }
+        } catch (error) {
+            console.log("Memory blocked, opening login normally.");
+            document.getElementById('login-screen').style.display = 'block';
+        }
 
     }).catch(err => {
         console.error("Error:", err);
@@ -67,7 +73,6 @@ function openTestSelector(baseSubject, mins) {
 
 function closeTestSelector() { document.getElementById('test-selector-modal').style.display = 'none'; }
 
-// ✅ Super Shuffle Function
 function shuffleArray(array) {
     let newArray = [...array]; 
     for (let i = newArray.length - 1; i > 0; i--) {
@@ -81,7 +86,6 @@ function startQuiz(exactSubjectName, mins) {
     let filteredQuestions = allQuestions.filter(i => i.sub === exactSubjectName);
     if(filteredQuestions.length === 0) return alert("Error: Questions not found!");
     
-    // Deep Copy banakar options aur questions ko shuffle karna
     let deepCopiedQuestions = JSON.parse(JSON.stringify(filteredQuestions));
     deepCopiedQuestions.forEach(q => { q.opt = shuffleArray(q.opt); });
     currentQuiz = shuffleArray(deepCopiedQuestions);
@@ -158,24 +162,44 @@ function endQuiz() {
     let finalScore = 0;
     const revBox = document.getElementById('review-box');
     revBox.innerHTML = "";
+    
     currentQuiz.forEach((q, i) => {
         const userAnswer = userAnswers[i] ? userAnswers[i].toString().trim().toLowerCase() : "";
         const correctAnswer = q.ans ? q.ans.toString().trim().toLowerCase() : "";
         const isCorrect = (userAnswer !== "" && userAnswer === correctAnswer);
         if(isCorrect) finalScore++;
+        
         const card = document.createElement('div');
         card.className = `review-card ${isCorrect ? 'correct' : 'wrong'}`;
         card.innerHTML = `<b>Q.${i+1}: ${q.q}</b><br><span style="color:${isCorrect?'green':'red'}">Aapne: ${userAnswers[i] || 'Nahi kiya'}</span> | <span style="color:green; font-weight:bold;">Sahi: ${q.ans}</span><div class="expl-box">💡 ${q.expl}</div>`;
         revBox.appendChild(card);
     });
-    document.getElementById('final-score').innerText = `Marks: ${finalScore} / ${currentQuiz.length}`;
+    
+    document.getElementById('final-score').innerHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${finalScore} / ${currentQuiz.length}</span>`;
     switchScreen('result-screen');
+
+    // 👇 Apna Apps Script wala URL zaroor dalna!
+    const adminUrl = "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें"; 
+    
+    if(adminUrl !== "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें") {
+        fetch(adminUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+                name: studentName,
+                test: document.getElementById('subject-label').innerText,
+                score: finalScore,
+                total: currentQuiz.length
+            })
+        }).then(res => console.log("Score Sent!"))
+          .catch(err => console.error("Error:", err));
+    }
 }
 
 function login() {
     const n = document.getElementById('student-name').value;
     if(!n) return alert("Naam likhein");
-    studentName = n; localStorage.setItem('studentName', n);
+    studentName = n; 
+    try { localStorage.setItem('studentName', n); } catch(e) {} // Safe save
     showDashboard(n);
 }
 
@@ -189,24 +213,22 @@ function switchScreen(id) {
     });
 }
 
-function logout() { localStorage.clear(); location.reload(); }
+function logout() { 
+    try { localStorage.clear(); } catch(e) {}
+    location.reload(); 
+}
 
-// ✅ KISI BHI PAGE SE BAHAR AANE KA NAYA FUNCTION (Close Button Logic)
 function goHome() {
-    // 1. Agar test chal raha hai
     if (document.getElementById('quiz-screen').style.display === 'block') {
         let confirmExit = confirm("Are you sure you want to close your test?");
         if (confirmExit) {
-            clearInterval(timer); // Timer ko rok do
-            switchScreen('dashboard-screen'); // Wapas home par bhejo
+            clearInterval(timer);
+            switchScreen('dashboard-screen');
         }
-    } 
-    // 2. Agar Result Screen par hai
-    else if (document.getElementById('result-screen').style.display === 'block') {
+    } else if (document.getElementById('result-screen').style.display === 'block') {
         switchScreen('dashboard-screen');
-    }
-    // 3. Agar Test Select karne wala Modal khula hai
-    else if (document.getElementById('test-selector-modal').style.display === 'flex') {
+    } else if (document.getElementById('test-selector-modal').style.display === 'flex') {
         closeTestSelector();
     }
 }
+    

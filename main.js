@@ -19,18 +19,20 @@ function fetchData() {
     console.log("Fetching Data...");
     fetch(API_URL).then(res => res.text()).then(data => {
         const json = JSON.parse(data.substring(47).slice(0, -2));
+        
+        // ✅ CHANGE HERE: Image ab sabse aakhri column (Index 8 / Column I) se aayega
         allQuestions = json.table.rows.map(row => ({
-            q: row.c[0]?.v, 
-            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean), 
-            ans: row.c[5]?.v, 
-            sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", 
-            expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai."
+            q: row.c[0]?.v,                        // Col A: Question
+            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean), // Col B,C,D,E: Options
+            ans: row.c[5]?.v,                      // Col F: Answer
+            sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", // Col G: Subject
+            expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai.",      // Col H: Explanation
+            img: row.c[8]?.v                       // 👉 Col I: IMAGE URL (New Last Column)
         })).filter(i => i.q && i.q !== "Question");
         
         console.log("Questions Loaded:", allQuestions.length);
         document.getElementById('loading-overlay').style.display = 'none';
 
-        // ✅ FIX: Mobile WebView ke liye LocalStorage ka Suraksha Kavach (Try-Catch)
         try {
             const saved = localStorage.getItem('studentName');
             if(saved) { studentName = saved; showDashboard(saved); }
@@ -103,7 +105,27 @@ function startQuiz(exactSubjectName, mins) {
 
 function loadQuestion() {
     const q = currentQuiz[currentIndex];
-    document.getElementById('q-text').innerText = `Q.${currentIndex + 1} ${q.q}`;
+    const qTextDiv = document.getElementById('q-text');
+    
+    // ✅ IMAGE LOGIC: Agar Column I (img) khali hai, to ye code skip ho jayega
+    let imageHTML = "";
+    if (q.img && q.img.length > 5) {
+        let cleanUrl = q.img.trim();
+        
+        // Google Drive Link Fixer
+        if (cleanUrl.includes("drive.google.com") && cleanUrl.includes("/view")) {
+             cleanUrl = cleanUrl.replace("/file/d/", "/uc?export=view&id=")
+                                .replace("/view?usp=sharing", "")
+                                .replace("/view?usp=drivesdk", "");
+        }
+        
+        // Sirf tabhi image tag banega jab link sahi ho
+        imageHTML = `<img src="${cleanUrl}" style="max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; display: block; border: 1px solid #ddd;" onerror="this.style.display='none'">`;
+    }
+
+    // Question Text + Image (Agar image nahi hai to imageHTML blank rahega)
+    qTextDiv.innerHTML = `<div>Q.${currentIndex + 1} ${q.q}</div>${imageHTML}`;
+
     const optDiv = document.getElementById('q-options');
     optDiv.innerHTML = "";
     
@@ -116,7 +138,7 @@ function loadQuestion() {
                 userAnswers[currentIndex] = o;
                 qStatus[currentIndex] = 1; 
                 renderPalette();
-                loadQuestion();
+                loadQuestion(); 
             };
             optDiv.appendChild(btn);
         }
@@ -169,16 +191,23 @@ function endQuiz() {
         const isCorrect = (userAnswer !== "" && userAnswer === correctAnswer);
         if(isCorrect) finalScore++;
         
+        // Review Screen me bhi Image dikhana
+        let reviewImg = "";
+        if(q.img && q.img.length > 5) {
+             let rUrl = q.img.replace("/file/d/", "/uc?export=view&id=").replace("/view?usp=sharing", "").replace("/view?usp=drivesdk", "");
+             reviewImg = `<br><img src="${rUrl}" style="max-height: 100px; margin-top:5px;">`;
+        }
+
         const card = document.createElement('div');
         card.className = `review-card ${isCorrect ? 'correct' : 'wrong'}`;
-        card.innerHTML = `<b>Q.${i+1}: ${q.q}</b><br><span style="color:${isCorrect?'green':'red'}">Aapne: ${userAnswers[i] || 'Nahi kiya'}</span> | <span style="color:green; font-weight:bold;">Sahi: ${q.ans}</span><div class="expl-box">💡 ${q.expl}</div>`;
+        card.innerHTML = `<b>Q.${i+1}: ${q.q}</b>${reviewImg}<br><span style="color:${isCorrect?'green':'red'}">Aapne: ${userAnswers[i] || 'Nahi kiya'}</span> | <span style="color:green; font-weight:bold;">Sahi: ${q.ans}</span><div class="expl-box">💡 ${q.expl}</div>`;
         revBox.appendChild(card);
     });
     
     document.getElementById('final-score').innerHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${finalScore} / ${currentQuiz.length}</span>`;
     switchScreen('result-screen');
 
-    // 👇 Apna Apps Script wala URL zaroor dalna!
+    // 👇 App Script URL
     const adminUrl = "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें"; 
     
     if(adminUrl !== "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें") {
@@ -199,7 +228,7 @@ function login() {
     const n = document.getElementById('student-name').value;
     if(!n) return alert("Naam likhein");
     studentName = n; 
-    try { localStorage.setItem('studentName', n); } catch(e) {} // Safe save
+    try { localStorage.setItem('studentName', n); } catch(e) {} 
     showDashboard(n);
 }
 
@@ -230,5 +259,5 @@ function goHome() {
     } else if (document.getElementById('test-selector-modal').style.display === 'flex') {
         closeTestSelector();
     }
-}
-    
+            }
+        

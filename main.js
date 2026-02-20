@@ -20,14 +20,13 @@ function fetchData() {
     fetch(API_URL).then(res => res.text()).then(data => {
         const json = JSON.parse(data.substring(47).slice(0, -2));
         
-        // ✅ CHANGE HERE: Image ab sabse aakhri column (Index 8 / Column I) se aayega
         allQuestions = json.table.rows.map(row => ({
-            q: row.c[0]?.v,                        // Col A: Question
-            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean), // Col B,C,D,E: Options
-            ans: row.c[5]?.v,                      // Col F: Answer
-            sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", // Col G: Subject
-            expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai.",      // Col H: Explanation
-            img: row.c[8]?.v                       // 👉 Col I: IMAGE URL (New Last Column)
+            q: row.c[0]?.v,                        
+            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean), 
+            ans: row.c[5]?.v,                      
+            sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", 
+            expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai.",      
+            img: row.c[8]?.v                       
         })).filter(i => i.q && i.q !== "Question");
         
         console.log("Questions Loaded:", allQuestions.length);
@@ -85,6 +84,39 @@ function shuffleArray(array) {
 }
 
 function startQuiz(exactSubjectName, mins) {
+    // ==========================================
+    // ⏰ SATURDAY TEST TIME LOCK LOGIC ⏰
+    // ==========================================
+    if (exactSubjectName.includes("Saturday Test")) {
+        const now = new Date();
+        const day = now.getDay(); // 4=Thursday, 5=Friday, 6=Saturday
+        const hour = now.getHours(); // 24-hour format
+
+        // अगर गुरुवार या शुक्रवार है, तो टेस्ट पूरी तरह लॉक रहेगा
+        if (day === 4 || day === 5) {
+            if (exactSubjectName.includes("12 to 4")) {
+                alert("⏳ यह टेस्ट शनिवार दोपहर 12:00 बजे लाइव होगा!");
+                return;
+            } else {
+                alert("⏳ यह टेस्ट शनिवार सुबह 9:00 बजे लाइव होगा!");
+                return;
+            }
+        }
+        
+        // अगर शनिवार है, तो समय चेक करें
+        if (day === 6) {
+            if (exactSubjectName.includes("12 to 4") && hour < 12) {
+                alert("⏳ यह टेस्ट आज दोपहर 12:00 बजे लाइव होगा! कृपया प्रतीक्षा करें।");
+                return;
+            }
+            if (exactSubjectName.includes("9 to 12") && hour < 9) {
+                alert("⏳ यह टेस्ट आज सुबह 9:00 बजे लाइव होगा! कृपया प्रतीक्षा करें।");
+                return;
+            }
+        }
+    }
+    // ==========================================
+
     let filteredQuestions = allQuestions.filter(i => i.sub === exactSubjectName);
     if(filteredQuestions.length === 0) return alert("Error: Questions not found!");
     
@@ -107,23 +139,17 @@ function loadQuestion() {
     const q = currentQuiz[currentIndex];
     const qTextDiv = document.getElementById('q-text');
     
-    // ✅ IMAGE LOGIC: Agar Column I (img) khali hai, to ye code skip ho jayega
     let imageHTML = "";
     if (q.img && q.img.length > 5) {
         let cleanUrl = q.img.trim();
-        
-        // Google Drive Link Fixer
         if (cleanUrl.includes("drive.google.com") && cleanUrl.includes("/view")) {
              cleanUrl = cleanUrl.replace("/file/d/", "/uc?export=view&id=")
                                 .replace("/view?usp=sharing", "")
                                 .replace("/view?usp=drivesdk", "");
         }
-        
-        // Sirf tabhi image tag banega jab link sahi ho
         imageHTML = `<img src="${cleanUrl}" style="max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; display: block; border: 1px solid #ddd;" onerror="this.style.display='none'">`;
     }
 
-    // Question Text + Image (Agar image nahi hai to imageHTML blank rahega)
     qTextDiv.innerHTML = `<div>Q.${currentIndex + 1} ${q.q}</div>${imageHTML}`;
 
     const optDiv = document.getElementById('q-options');
@@ -191,7 +217,6 @@ function endQuiz() {
         const isCorrect = (userAnswer !== "" && userAnswer === correctAnswer);
         if(isCorrect) finalScore++;
         
-        // Review Screen me bhi Image dikhana
         let reviewImg = "";
         if(q.img && q.img.length > 5) {
              let rUrl = q.img.replace("/file/d/", "/uc?export=view&id=").replace("/view?usp=sharing", "").replace("/view?usp=drivesdk", "");
@@ -206,6 +231,17 @@ function endQuiz() {
     
     document.getElementById('final-score').innerHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${finalScore} / ${currentQuiz.length}</span>`;
     switchScreen('result-screen');
+
+    // ==========================================
+    // 📢 POPUP MESSAGE ON TEST FINISH 📢
+    // ==========================================
+    const testName = document.getElementById('subject-label').innerText;
+    if (testName.includes("Saturday Test")) {
+        setTimeout(() => {
+            alert("टेस्ट देने के लिए धन्यवाद! 🙏\nकृपया अपना स्कोर सबमिट जरूर करें।");
+        }, 500); // 500 मिलीसेकंड का डिले ताकि रिजल्ट स्क्रीन पहले आ जाए
+    }
+    // ==========================================
 
     // 👇 App Script URL
     const adminUrl = "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें"; 
@@ -259,5 +295,5 @@ function goHome() {
     } else if (document.getElementById('test-selector-modal').style.display === 'flex') {
         closeTestSelector();
     }
-            }
-        
+        }
+            

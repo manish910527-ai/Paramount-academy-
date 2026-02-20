@@ -85,34 +85,36 @@ function shuffleArray(array) {
 
 function startQuiz(exactSubjectName, mins) {
     // ==========================================
-    // ⏰ SATURDAY TEST TIME LOCK LOGIC ⏰
+    // ⏰ NEW DYNAMIC DATE & TIME LOCK LOGIC ⏰
     // ==========================================
-    if (exactSubjectName.includes("Saturday Test")) {
-        const now = new Date();
-        const day = now.getDay(); // 4=Thursday, 5=Friday, 6=Saturday
-        const hour = now.getHours(); // 24-hour format
+    // यह कोड शीट के नाम में से DD-MM-YY वाली तारीख ढूंढेगा
+    const dateMatch = exactSubjectName.match(/(\d{2})-(\d{2})-(\d{2})/);
+    // यह कोड ब्रैकेट के अंदर का पहला समय (जैसे 9 या 12) ढूंढेगा
+    const timeMatch = exactSubjectName.match(/\((\d+)/);
 
-        // अगर गुरुवार या शुक्रवार है, तो टेस्ट पूरी तरह लॉक रहेगा
-        if (day === 4 || day === 5) {
-            if (exactSubjectName.includes("12 to 4")) {
-                alert("⏳ यह टेस्ट शनिवार दोपहर 12:00 बजे लाइव होगा!");
-                return;
-            } else {
-                alert("⏳ यह टेस्ट शनिवार सुबह 9:00 बजे लाइव होगा!");
-                return;
-            }
-        }
+    // अगर नाम में कोई तारीख (Date) दी गई है, तभी टाइमर लगेगा (वरना टेस्ट सीधे चालू हो जाएगा)
+    if (dateMatch) {
+        const day = parseInt(dateMatch[1], 10);
+        const month = parseInt(dateMatch[2], 10) - 1; // जावास्क्रिप्ट में महीने 0 से शुरू होते हैं (0 = Jan)
+        const year = 2000 + parseInt(dateMatch[3], 10); // 26 को 2026 बनाएगा
         
-        // अगर शनिवार है, तो समय चेक करें
-        if (day === 6) {
-            if (exactSubjectName.includes("12 to 4") && hour < 12) {
-                alert("⏳ यह टेस्ट आज दोपहर 12:00 बजे लाइव होगा! कृपया प्रतीक्षा करें।");
-                return;
-            }
-            if (exactSubjectName.includes("9 to 12") && hour < 9) {
-                alert("⏳ यह टेस्ट आज सुबह 9:00 बजे लाइव होगा! कृपया प्रतीक्षा करें।");
-                return;
-            }
+        let hour = 0; // अगर समय नहीं लिखा तो रात 12 बजे का मान लेगा
+        if (timeMatch) {
+            hour = parseInt(timeMatch[1], 10); // ब्रैकेट से 9 या 12 निकालेगा
+        }
+
+        // शीट में लिखी तारीख और समय का एक 'टारगेट टाइम' बनाएगा
+        const scheduledTime = new Date(year, month, day, hour, 0, 0);
+        const now = new Date(); // अभी का समय
+
+        // अगर अभी का समय, टेस्ट के समय से पीछे है, तो टेस्ट को रोक देगा
+        if (now < scheduledTime) {
+            let ampm = hour >= 12 ? 'PM' : 'AM';
+            let displayHour = hour > 12 ? hour - 12 : hour;
+            if (displayHour === 0) displayHour = 12;
+            
+            alert(`⏳ यह टेस्ट ${dateMatch[0]} को ${displayHour}:00 ${ampm} बजे लाइव होगा! कृपया प्रतीक्षा करें।`);
+            return; // कोड यहीं रुक जाएगा, टेस्ट चालू नहीं होगा
         }
     }
     // ==========================================
@@ -236,10 +238,10 @@ function endQuiz() {
     // 📢 POPUP MESSAGE ON TEST FINISH 📢
     // ==========================================
     const testName = document.getElementById('subject-label').innerText;
-    if (testName.includes("Saturday Test")) {
+    if (testName.toLowerCase().includes("saturday") || testName.match(/(\d{2})-(\d{2})-(\d{2})/)) {
         setTimeout(() => {
             alert("टेस्ट देने के लिए धन्यवाद! 🙏\nकृपया अपना स्कोर सबमिट जरूर करें।");
-        }, 500); // 500 मिलीसेकंड का डिले ताकि रिजल्ट स्क्रीन पहले आ जाए
+        }, 500); 
     }
     // ==========================================
 

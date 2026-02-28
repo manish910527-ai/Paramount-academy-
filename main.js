@@ -84,40 +84,31 @@ function shuffleArray(array) {
 }
 
 function startQuiz(exactSubjectName, mins) {
-    // ==========================================
-    // ⏰ NEW DYNAMIC DATE & TIME LOCK LOGIC ⏰
-    // ==========================================
-    // यह कोड शीट के नाम में से DD-MM-YY वाली तारीख ढूंढेगा
     const dateMatch = exactSubjectName.match(/(\d{2})-(\d{2})-(\d{2})/);
-    // यह कोड ब्रैकेट के अंदर का पहला समय (जैसे 9 या 12) ढूंढेगा
     const timeMatch = exactSubjectName.match(/\((\d+)/);
 
-    // अगर नाम में कोई तारीख (Date) दी गई है, तभी टाइमर लगेगा (वरना टेस्ट सीधे चालू हो जाएगा)
     if (dateMatch) {
         const day = parseInt(dateMatch[1], 10);
-        const month = parseInt(dateMatch[2], 10) - 1; // जावास्क्रिप्ट में महीने 0 से शुरू होते हैं (0 = Jan)
-        const year = 2000 + parseInt(dateMatch[3], 10); // 26 को 2026 बनाएगा
+        const month = parseInt(dateMatch[2], 10) - 1; 
+        const year = 2000 + parseInt(dateMatch[3], 10); 
         
-        let hour = 0; // अगर समय नहीं लिखा तो रात 12 बजे का मान लेगा
+        let hour = 0; 
         if (timeMatch) {
-            hour = parseInt(timeMatch[1], 10); // ब्रैकेट से 9 या 12 निकालेगा
+            hour = parseInt(timeMatch[1], 10); 
         }
 
-        // शीट में लिखी तारीख और समय का एक 'टारगेट टाइम' बनाएगा
         const scheduledTime = new Date(year, month, day, hour, 0, 0);
-        const now = new Date(); // अभी का समय
+        const now = new Date(); 
 
-        // अगर अभी का समय, टेस्ट के समय से पीछे है, तो टेस्ट को रोक देगा
         if (now < scheduledTime) {
             let ampm = hour >= 12 ? 'PM' : 'AM';
             let displayHour = hour > 12 ? hour - 12 : hour;
             if (displayHour === 0) displayHour = 12;
             
             alert(`⏳ यह टेस्ट ${dateMatch[0]} को ${displayHour}:00 ${ampm} बजे लाइव होगा! कृपया प्रतीक्षा करें।`);
-            return; // कोड यहीं रुक जाएगा, टेस्ट चालू नहीं होगा
+            return; 
         }
     }
-    // ==========================================
 
     let filteredQuestions = allQuestions.filter(i => i.sub === exactSubjectName);
     if(filteredQuestions.length === 0) return alert("Error: Questions not found!");
@@ -234,18 +225,13 @@ function endQuiz() {
     document.getElementById('final-score').innerHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${finalScore} / ${currentQuiz.length}</span>`;
     switchScreen('result-screen');
 
-    // ==========================================
-    // 📢 POPUP MESSAGE ON TEST FINISH 📢
-    // ==========================================
     const testName = document.getElementById('subject-label').innerText;
     if (testName.toLowerCase().includes("saturday") || testName.match(/(\d{2})-(\d{2})-(\d{2})/)) {
         setTimeout(() => {
             alert("टेस्ट देने के लिए धन्यवाद! 🙏\nकृपया अपना स्कोर सबमिट जरूर करें।");
         }, 500); 
     }
-    // ==========================================
 
-    // 👇 App Script URL
     const adminUrl = "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें"; 
     
     if(adminUrl !== "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें") {
@@ -297,5 +283,23 @@ function goHome() {
     } else if (document.getElementById('test-selector-modal').style.display === 'flex') {
         closeTestSelector();
     }
-        }
-            
+}
+
+// ✅ NEW SHARE APP FUNCTION ADDED HERE
+function shareApp() {
+    const shareData = {
+        title: 'Paramount Academy - ExamSpeed Math',
+        text: '🔥 Free Online Mock Tests for Maths, Reasoning, GK & Science! Practice now:',
+        url: 'https://manish910527-ai.github.io/Paramount-academy-/'
+    };
+    
+    if (navigator.share) {
+        navigator.share(shareData).catch(err => console.error("Error sharing:", err));
+    } else {
+        // Agar browser support nahi karta (jaise purane phone me), to link copy ho jayega
+        navigator.clipboard.writeText(shareData.url).then(() => {
+            alert("✅ App Link Copied! Ab ise WhatsApp par apne doston ko bhejein.");
+        });
+    }
+    }
+                                                

@@ -314,21 +314,17 @@ function shareApp() {
 let regMobileNumber = ""; 
 
 function checkHoliEligibility() {
-    if (localStorage.getItem('holiTestDone') === 'true') {
-        alert("❌ आप यह 'Holi Special Test' पहले ही दे चुके हैं!\nएक छात्र केवल एक ही बार यह टेस्ट दे सकता है।");
-        return;
+    try {
+        if (localStorage.getItem('holiTestDone') === 'true') {
+            alert("❌ आप यह 'Holi Special Test' पहले ही दे चुके हैं!\nएक छात्र केवल एक ही बार यह टेस्ट दे सकता है।");
+            return;
+        }
+    } catch(e) {
+        console.log("APK Cache Error");
     }
     switchScreen('registration-screen');
 }
 
-function startHoliMegaTest() {
-    const rName = document.getElementById('reg-name').value;
-    const rMob = document.getElementById('reg-mobile').value;
-    
-    if (rName.trim() === "" || rMob.trim().length !== 10) {
-        alert("⚠️ कृपया अपना सही नाम और 10 अंकों का मोबाइल नंबर डालें!");
-        return;
-    }
     
     studentName = rName; 
     regMobileNumber = rMob;

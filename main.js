@@ -225,7 +225,12 @@ function endQuiz() {
     document.getElementById('final-score').innerHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${finalScore} / ${currentQuiz.length}</span>`;
     switchScreen('result-screen');
 
+    // ✅ होली टेस्ट पूरा होने पर उसे हमेशा के लिए लॉक करना
     const testName = document.getElementById('subject-label').innerText;
+    if (testName === 'Holi Special') {
+        localStorage.setItem('holiTestDone', 'true');
+    }
+
     if (testName.toLowerCase().includes("saturday") || testName.match(/(\d{2})-(\d{2})-(\d{2})/)) {
         setTimeout(() => {
             alert("टेस्ट देने के लिए धन्यवाद! 🙏\nकृपया अपना स्कोर सबमिट जरूर करें।");
@@ -258,8 +263,9 @@ function login() {
 
 function showDashboard(n) { document.getElementById('display-name').innerText = n; switchScreen('dashboard-screen'); }
 
+// ✅ switchScreen में 'registration-screen' जोड़ा गया है
 function switchScreen(id) {
-    ['login-screen', 'dashboard-screen', 'quiz-screen', 'result-screen'].forEach(s => {
+    ['login-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'registration-screen'].forEach(s => {
         const el = document.getElementById(s);
         if(el) el.style.display = (s === id) ? 'block' : 'none';
         if(id === 'dashboard-screen') document.getElementById('test-selector-modal').style.display = 'none';
@@ -285,7 +291,7 @@ function goHome() {
     }
 }
 
-// ✅ NEW SHARE APP FUNCTION ADDED HERE
+// ✅ NEW SHARE APP FUNCTION
 function shareApp() {
     const shareData = {
         title: 'Paramount Academy - ExamSpeed Math',
@@ -296,10 +302,38 @@ function shareApp() {
     if (navigator.share) {
         navigator.share(shareData).catch(err => console.error("Error sharing:", err));
     } else {
-        // Agar browser support nahi karta (jaise purane phone me), to link copy ho jayega
         navigator.clipboard.writeText(shareData.url).then(() => {
             alert("✅ App Link Copied! Ab ise WhatsApp par apne doston ko bhejein.");
         });
     }
+}
+
+// ==========================================
+// 🎨 HOLI SPECIAL TEST LOGIC 🎨
+// ==========================================
+let regMobileNumber = ""; 
+
+function checkHoliEligibility() {
+    if (localStorage.getItem('holiTestDone') === 'true') {
+        alert("❌ आप यह 'Holi Special Test' पहले ही दे चुके हैं!\nएक छात्र केवल एक ही बार यह टेस्ट दे सकता है।");
+        return;
     }
-                                                
+    switchScreen('registration-screen');
+}
+
+function startHoliMegaTest() {
+    const rName = document.getElementById('reg-name').value;
+    const rMob = document.getElementById('reg-mobile').value;
+    
+    if (rName.trim() === "" || rMob.trim().length !== 10) {
+        alert("⚠️ कृपया अपना सही नाम और 10 अंकों का मोबाइल नंबर डालें!");
+        return;
+    }
+    
+    studentName = rName; 
+    regMobileNumber = rMob;
+    
+    // होली टेस्ट का टाइम 60 मिनट सेट है, आप चाहें तो इसे बदल सकते हैं
+    startQuiz('Holi Special', 60); 
+    }
+    

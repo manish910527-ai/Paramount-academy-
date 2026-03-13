@@ -92,7 +92,7 @@ function startQuiz(exactSubjectName, mins) {
 
     if (dateMatch) {
         const day = parseInt(dateMatch[1], 10);
-        const month = parseInt(dateMatch[2], 10) - 1; // Months are 0-indexed in JS
+        const month = parseInt(dateMatch[2], 10) - 1; 
         const year = 2000 + parseInt(dateMatch[3], 10); 
         
         let hour = 0; 
@@ -109,7 +109,7 @@ function startQuiz(exactSubjectName, mins) {
             if (displayHour === 0) displayHour = 12;
             
             alert(`⏳ यह टेस्ट ${dateMatch[0]} को ${displayHour}:00 ${ampm} बजे लाइव होगा! कृपया प्रतीक्षा करें।`);
-            return; // 🚫 Test yahi ruk jayega
+            return; 
         }
     }
     // ==========================================
@@ -229,12 +229,7 @@ function endQuiz() {
     document.getElementById('final-score').innerHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${finalScore} / ${currentQuiz.length}</span>`;
     switchScreen('result-screen');
 
-    // ✅ Holi Test Lock System
     const testName = document.getElementById('subject-label').innerText;
-    if (testName === 'Holi Special') {
-        localStorage.setItem('holiTestDone', 'true');
-    }
-
     if (testName.toLowerCase().includes("saturday") || testName.match(/(\d{2})-(\d{2})-(\d{2})/)) {
         setTimeout(() => {
             alert("टेस्ट देने के लिए धन्यवाद! 🙏\nकृपया अपना स्कोर सबमिट जरूर करें।");
@@ -268,7 +263,7 @@ function login() {
 function showDashboard(n) { document.getElementById('display-name').innerText = n; switchScreen('dashboard-screen'); }
 
 function switchScreen(id) {
-    ['login-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'registration-screen'].forEach(s => {
+    ['login-screen', 'dashboard-screen', 'quiz-screen', 'result-screen'].forEach(s => {
         const el = document.getElementById(s);
         if(el) el.style.display = (s === id) ? 'block' : 'none';
         if(id === 'dashboard-screen') document.getElementById('test-selector-modal').style.display = 'none';
@@ -309,4 +304,4 @@ function shareApp() {
             alert("✅ App Link Copied! Ab ise WhatsApp par apne doston ko bhejein.");
         });
     }
-}
+            }

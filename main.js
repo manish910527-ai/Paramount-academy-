@@ -20,14 +20,13 @@ function fetchData() {
     fetch(API_URL).then(res => res.text()).then(data => {
         const json = JSON.parse(data.substring(47).slice(0, -2));
         
-        // ✅ CHANGE HERE: Image ab sabse aakhri column (Index 8 / Column I) se aayega
         allQuestions = json.table.rows.map(row => ({
-            q: row.c[0]?.v,                        // Col A: Question
-            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean), // Col B,C,D,E: Options
-            ans: row.c[5]?.v,                      // Col F: Answer
-            sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", // Col G: Subject
-            expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai.",      // Col H: Explanation
-            img: row.c[8]?.v                       // 👉 Col I: IMAGE URL (New Last Column)
+            q: row.c[0]?.v,                        
+            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean), 
+            ans: row.c[5]?.v,                      
+            sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", 
+            expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai.",      
+            img: row.c[8]?.v                       
         })).filter(i => i.q && i.q !== "Question");
         
         console.log("Questions Loaded:", allQuestions.length);
@@ -85,6 +84,36 @@ function shuffleArray(array) {
 }
 
 function startQuiz(exactSubjectName, mins) {
+    // ==========================================
+    // ⏰ DATE & TIME LOCK LOGIC (Saturday Test Lock) ⏰
+    // ==========================================
+    const dateMatch = exactSubjectName.match(/(\d{2})-(\d{2})-(\d{2})/);
+    const timeMatch = exactSubjectName.match(/\((\d+)\)/);
+
+    if (dateMatch) {
+        const day = parseInt(dateMatch[1], 10);
+        const month = parseInt(dateMatch[2], 10) - 1; // Months are 0-indexed in JS
+        const year = 2000 + parseInt(dateMatch[3], 10); 
+        
+        let hour = 0; 
+        if (timeMatch) {
+            hour = parseInt(timeMatch[1], 10); 
+        }
+
+        const scheduledTime = new Date(year, month, day, hour, 0, 0);
+        const now = new Date(); 
+
+        if (now < scheduledTime) {
+            let ampm = hour >= 12 ? 'PM' : 'AM';
+            let displayHour = hour > 12 ? hour - 12 : hour;
+            if (displayHour === 0) displayHour = 12;
+            
+            alert(`⏳ यह टेस्ट ${dateMatch[0]} को ${displayHour}:00 ${ampm} बजे लाइव होगा! कृपया प्रतीक्षा करें।`);
+            return; // 🚫 Test yahi ruk jayega
+        }
+    }
+    // ==========================================
+
     let filteredQuestions = allQuestions.filter(i => i.sub === exactSubjectName);
     if(filteredQuestions.length === 0) return alert("Error: Questions not found!");
     
@@ -107,23 +136,17 @@ function loadQuestion() {
     const q = currentQuiz[currentIndex];
     const qTextDiv = document.getElementById('q-text');
     
-    // ✅ IMAGE LOGIC: Agar Column I (img) khali hai, to ye code skip ho jayega
     let imageHTML = "";
     if (q.img && q.img.length > 5) {
         let cleanUrl = q.img.trim();
-        
-        // Google Drive Link Fixer
         if (cleanUrl.includes("drive.google.com") && cleanUrl.includes("/view")) {
              cleanUrl = cleanUrl.replace("/file/d/", "/uc?export=view&id=")
                                 .replace("/view?usp=sharing", "")
                                 .replace("/view?usp=drivesdk", "");
         }
-        
-        // Sirf tabhi image tag banega jab link sahi ho
         imageHTML = `<img src="${cleanUrl}" style="max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; display: block; border: 1px solid #ddd;" onerror="this.style.display='none'">`;
     }
 
-    // Question Text + Image (Agar image nahi hai to imageHTML blank rahega)
     qTextDiv.innerHTML = `<div>Q.${currentIndex + 1} ${q.q}</div>${imageHTML}`;
 
     const optDiv = document.getElementById('q-options');
@@ -191,7 +214,6 @@ function endQuiz() {
         const isCorrect = (userAnswer !== "" && userAnswer === correctAnswer);
         if(isCorrect) finalScore++;
         
-        // Review Screen me bhi Image dikhana
         let reviewImg = "";
         if(q.img && q.img.length > 5) {
              let rUrl = q.img.replace("/file/d/", "/uc?export=view&id=").replace("/view?usp=sharing", "").replace("/view?usp=drivesdk", "");
@@ -207,7 +229,18 @@ function endQuiz() {
     document.getElementById('final-score').innerHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${finalScore} / ${currentQuiz.length}</span>`;
     switchScreen('result-screen');
 
-    // 👇 App Script URL
+    // ✅ Holi Test Lock System
+    const testName = document.getElementById('subject-label').innerText;
+    if (testName === 'Holi Special') {
+        localStorage.setItem('holiTestDone', 'true');
+    }
+
+    if (testName.toLowerCase().includes("saturday") || testName.match(/(\d{2})-(\d{2})-(\d{2})/)) {
+        setTimeout(() => {
+            alert("टेस्ट देने के लिए धन्यवाद! 🙏\nकृपया अपना स्कोर सबमिट जरूर करें।");
+        }, 500); 
+    }
+
     const adminUrl = "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें"; 
     
     if(adminUrl !== "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें") {
@@ -235,7 +268,7 @@ function login() {
 function showDashboard(n) { document.getElementById('display-name').innerText = n; switchScreen('dashboard-screen'); }
 
 function switchScreen(id) {
-    ['login-screen', 'dashboard-screen', 'quiz-screen', 'result-screen'].forEach(s => {
+    ['login-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'registration-screen'].forEach(s => {
         const el = document.getElementById(s);
         if(el) el.style.display = (s === id) ? 'block' : 'none';
         if(id === 'dashboard-screen') document.getElementById('test-selector-modal').style.display = 'none';
@@ -259,5 +292,21 @@ function goHome() {
     } else if (document.getElementById('test-selector-modal').style.display === 'flex') {
         closeTestSelector();
     }
-            }
-        
+}
+
+// ✅ SHARE APP FUNCTION
+function shareApp() {
+    const shareData = {
+        title: 'Paramount Academy - ExamSpeed Math',
+        text: '🔥 Free Online Mock Tests for Maths, Reasoning, GK & Science! Practice now:',
+        url: 'https://manish910527-ai.github.io/Paramount-academy-/'
+    };
+    
+    if (navigator.share) {
+        navigator.share(shareData).catch(err => console.error("Error sharing:", err));
+    } else {
+        navigator.clipboard.writeText(shareData.url).then(() => {
+            alert("✅ App Link Copied! Ab ise WhatsApp par apne doston ko bhejein.");
+        });
+    }
+}

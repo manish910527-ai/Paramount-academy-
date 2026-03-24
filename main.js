@@ -10,16 +10,17 @@ let studentName = "";
 let qStatus = []; 
 let userAnswers = []; 
 
-// Variables for Instructions
 let pendingTestName = "";
 let pendingTestMins = 0;
 
 window.onload = function() {
-    // Dark mode check
-    if(localStorage.getItem('darkMode') === 'true') {
-        document.body.classList.add('dark-mode');
-        document.getElementById('dark-btn').innerText = '☀️';
-    }
+    // Phone memory (localStorage) check with safety
+    try {
+        if(localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+            document.getElementById('dark-btn').innerText = '☀️';
+        }
+    } catch(e) { console.log("Local storage restricted for Dark Mode"); }
 
     document.getElementById('loading-overlay').style.display = 'flex';
     fetchData();
@@ -28,7 +29,9 @@ window.onload = function() {
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
     const isDark = document.body.classList.contains('dark-mode');
-    localStorage.setItem('darkMode', isDark);
+    try { 
+        localStorage.setItem('darkMode', isDark); 
+    } catch(e) {}
     document.getElementById('dark-btn').innerText = isDark ? '☀️' : '🌙';
 }
 
@@ -104,7 +107,6 @@ function openTestSelector(baseSubject, mins) {
 
 function closeTestSelector() { document.getElementById('test-selector-modal').style.display = 'none'; }
 
-// NAYA: Pre-Test Instructions
 function showInstructions(testName, mins) {
     pendingTestName = testName;
     pendingTestMins = mins;
@@ -112,7 +114,6 @@ function showInstructions(testName, mins) {
     document.getElementById('inst-title').innerText = testName;
     document.getElementById('inst-time').innerText = mins;
     
-    // Check for negative marking rules based on text
     let hasNegative = testName.toLowerCase().includes('vanrakshak');
     document.getElementById('inst-neg').innerText = hasNegative ? 'Yes (-0.25 per wrong answer)' : 'No';
     document.getElementById('inst-neg').style.color = hasNegative ? 'var(--danger)' : 'var(--success)';
@@ -279,21 +280,30 @@ function endQuiz() {
     document.getElementById('final-score').innerHTML = scoreHTML;
     switchScreen('result-screen');
 
-    // NAYA: Update Student Progress in Local Storage
     updateStudentStats(rightCount, attempted);
 }
 
-// Stats tracking Logic
 function updateStudentStats(right, attempted) {
-    let stats = JSON.parse(localStorage.getItem('studentStats')) || { tests: 0, totalRight: 0, totalAttempted: 0 };
-    stats.tests += 1;
-    stats.totalRight += right;
-    stats.totalAttempted += attempted;
-    localStorage.setItem('studentStats', JSON.stringify(stats));
+    let stats = { tests: 0, totalRight: 0, totalAttempted: 0 };
+    try {
+        let saved = localStorage.getItem('studentStats');
+        if (saved) stats = JSON.parse(saved);
+        
+        stats.tests += 1;
+        stats.totalRight += right;
+        stats.totalAttempted += attempted;
+        
+        localStorage.setItem('studentStats', JSON.stringify(stats));
+    } catch(e) { console.log("Memory blocked for stats"); }
 }
 
 function loadDashboardStats() {
-    let stats = JSON.parse(localStorage.getItem('studentStats')) || { tests: 0, totalRight: 0, totalAttempted: 0 };
+    let stats = { tests: 0, totalRight: 0, totalAttempted: 0 };
+    try {
+        let saved = localStorage.getItem('studentStats');
+        if (saved) stats = JSON.parse(saved);
+    } catch(e) {}
+    
     document.getElementById('stat-tests').innerText = stats.tests;
     document.getElementById('stat-right').innerText = stats.totalRight;
     
@@ -311,7 +321,7 @@ function login() {
 
 function showDashboard(n) { 
     document.getElementById('display-name').innerText = n; 
-    loadDashboardStats(); // Load stats when dashboard opens
+    loadDashboardStats(); 
     switchScreen('dashboard-screen'); 
 }
 
@@ -326,7 +336,7 @@ function switchScreen(id) {
 function logout() { 
     try { 
         localStorage.removeItem('studentName');
-        localStorage.removeItem('studentStats'); // Logout par stats reset
+        localStorage.removeItem('studentStats');
     } catch(e) {}
     location.reload(); 
 }
@@ -359,4 +369,4 @@ function shareApp() {
             alert("✅ App Link Copied! Ab ise WhatsApp par bhejein.");
         });
     }
-    }
+}

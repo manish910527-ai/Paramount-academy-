@@ -1,3 +1,12 @@
+// AUTO-ERROR READER: Agar app crash hogi toh screen par error likha aayega
+window.onerror = function(msg) {
+    let loadingText = document.querySelector('.loading-text');
+    if(loadingText) {
+        loadingText.innerText = "App Error: " + msg;
+        loadingText.style.color = "red";
+    }
+};
+
 const SHEET_ID = '1-OLtX148Img-7cP1pUbjntNBD3CUiLy3lTvVjovlpac';
 const SHEET_NAME = 'Sheet1'; 
 const API_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&t=${new Date().getTime()}`;
@@ -14,13 +23,12 @@ let pendingTestName = "";
 let pendingTestMins = 0;
 
 window.onload = function() {
-    // Phone memory (localStorage) check with safety
     try {
         if(localStorage.getItem('darkMode') === 'true') {
             document.body.classList.add('dark-mode');
             document.getElementById('dark-btn').innerText = '☀️';
         }
-    } catch(e) { console.log("Local storage restricted for Dark Mode"); }
+    } catch(e) {}
 
     document.getElementById('loading-overlay').style.display = 'flex';
     fetchData();
@@ -29,9 +37,7 @@ window.onload = function() {
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
     const isDark = document.body.classList.contains('dark-mode');
-    try { 
-        localStorage.setItem('darkMode', isDark); 
-    } catch(e) {}
+    try { localStorage.setItem('darkMode', isDark); } catch(e) {}
     document.getElementById('dark-btn').innerText = isDark ? '☀️' : '🌙';
 }
 
@@ -40,8 +46,9 @@ function fetchData() {
         const json = JSON.parse(data.substring(47).slice(0, -2));
         
         allQuestions = json.table.rows.map(row => {
-            let originalOpts = [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean);
-            let rawAns = row.c[5]?.v;
+            let c = row.c || []; // SAFETY CHECK: Khali row hone par app crash nahi hogi
+            let originalOpts = [c[1]?.v, c[2]?.v, c[3]?.v, c[4]?.v].filter(Boolean);
+            let rawAns = c[5]?.v;
             let resolvedAns = rawAns;
 
             if (rawAns) {
@@ -53,12 +60,12 @@ function fetchData() {
             }
 
             return {
-                q: row.c[0]?.v,                        
+                q: c[0]?.v,                        
                 opt: originalOpts, 
                 ans: resolvedAns,                      
-                sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", 
-                expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai.",      
-                img: row.c[8]?.v                       
+                sub: c[6]?.v ? c[6].v.toString().trim() : "", 
+                expl: c[7]?.v || "Vyakhya uplabdh nahi hai.",      
+                img: c[8]?.v                       
             };
         }).filter(i => i.q && i.q !== "Question");
         
@@ -73,7 +80,8 @@ function fetchData() {
         }
 
     }).catch(err => {
-        document.querySelector('.loading-text').innerText = "Internet Error! Please Refresh.";
+        console.error("Fetch Error:", err);
+        document.querySelector('.loading-text').innerText = "Data load nahi hua. Sheet check karein!";
         document.querySelector('.loading-text').style.color = "red";
     });
 }
@@ -294,7 +302,7 @@ function updateStudentStats(right, attempted) {
         stats.totalAttempted += attempted;
         
         localStorage.setItem('studentStats', JSON.stringify(stats));
-    } catch(e) { console.log("Memory blocked for stats"); }
+    } catch(e) {}
 }
 
 function loadDashboardStats() {

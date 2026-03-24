@@ -20,14 +20,30 @@ function fetchData() {
     fetch(API_URL).then(res => res.text()).then(data => {
         const json = JSON.parse(data.substring(47).slice(0, -2));
         
-        allQuestions = json.table.rows.map(row => ({
-            q: row.c[0]?.v,                        
-            opt: [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean), 
-            ans: row.c[5]?.v,                      
-            sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", 
-            expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai.",      
-            img: row.c[8]?.v                       
-        })).filter(i => i.q && i.q !== "Question");
+        allQuestions = json.table.rows.map(row => {
+            // Options ko pehle hi array mein nikal lenge
+            let originalOpts = [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean);
+            let rawAns = row.c[5]?.v;
+            let resolvedAns = rawAns;
+
+            // SMART CHECKING: Agar ans me "Option A" ya "A" likha hai, toh actual text set karenge
+            if (rawAns) {
+                let ansStr = rawAns.toString().trim().toUpperCase();
+                if (ansStr === 'A' || ansStr === 'OPTION A' || ansStr === '1' || ansStr === 'OPTION 1') resolvedAns = originalOpts[0];
+                else if (ansStr === 'B' || ansStr === 'OPTION B' || ansStr === '2' || ansStr === 'OPTION 2') resolvedAns = originalOpts[1];
+                else if (ansStr === 'C' || ansStr === 'OPTION C' || ansStr === '3' || ansStr === 'OPTION 3') resolvedAns = originalOpts[2];
+                else if (ansStr === 'D' || ansStr === 'OPTION D' || ansStr === '4' || ansStr === 'OPTION 4') resolvedAns = originalOpts[3];
+            }
+
+            return {
+                q: row.c[0]?.v,                        
+                opt: originalOpts, 
+                ans: resolvedAns,                      
+                sub: row.c[6]?.v ? row.c[6].v.toString().trim() : "", 
+                expl: row.c[7]?.v || "Vyakhya uplabdh nahi hai.",      
+                img: row.c[8]?.v                       
+            };
+        }).filter(i => i.q && i.q !== "Question");
         
         console.log("Questions Loaded:", allQuestions.length);
         document.getElementById('loading-overlay').style.display = 'none';
@@ -84,9 +100,6 @@ function shuffleArray(array) {
 }
 
 function startQuiz(exactSubjectName, mins) {
-    // ==========================================
-    // ⏰ DATE & TIME LOCK LOGIC (Saturday Test Lock) ⏰
-    // ==========================================
     const dateMatch = exactSubjectName.match(/(\d{2})-(\d{2})-(\d{2})/);
     const timeMatch = exactSubjectName.match(/\((\d+)\)/);
 
@@ -112,7 +125,6 @@ function startQuiz(exactSubjectName, mins) {
             return; 
         }
     }
-    // ==========================================
 
     let filteredQuestions = allQuestions.filter(i => i.sub === exactSubjectName);
     if(filteredQuestions.length === 0) return alert("Error: Questions not found!");
@@ -205,14 +217,34 @@ function confirmSubmit() { if(confirm("Finish Test?")) endQuiz(); }
 function endQuiz() {
     clearInterval(timer);
     let finalScore = 0;
+    let rightCount = 0;
+    let wrongCount = 0;
     const revBox = document.getElementById('review-box');
     revBox.innerHTML = "";
+    
+    const testName = document.getElementById('subject-label').innerText;
+    // NEGATIVE MARKING LOGIC: Check agar test Vanrakshak ka hai
+    const isVanrakshak = testName.toLowerCase().includes('vanrakshak');
     
     currentQuiz.forEach((q, i) => {
         const userAnswer = userAnswers[i] ? userAnswers[i].toString().trim().toLowerCase() : "";
         const correctAnswer = q.ans ? q.ans.toString().trim().toLowerCase() : "";
-        const isCorrect = (userAnswer !== "" && userAnswer === correctAnswer);
-        if(isCorrect) finalScore++;
+        
+        let isCorrect = false;
+        let isAttempted = userAnswer !== "";
+
+        if (isAttempted) {
+            if (userAnswer === correctAnswer) {
+                isCorrect = true;
+                finalScore += 1;
+                rightCount++;
+            } else {
+                wrongCount++;
+                if (isVanrakshak) {
+                    finalScore -= 0.25; // 0.25 negative marking apply ho rahi hai
+                }
+            }
+        }
         
         let reviewImg = "";
         if(q.img && q.img.length > 5) {
@@ -221,15 +253,26 @@ function endQuiz() {
         }
 
         const card = document.createElement('div');
-        card.className = `review-card ${isCorrect ? 'correct' : 'wrong'}`;
-        card.innerHTML = `<b>Q.${i+1}: ${q.q}</b>${reviewImg}<br><span style="color:${isCorrect?'green':'red'}">Aapne: ${userAnswers[i] || 'Nahi kiya'}</span> | <span style="color:green; font-weight:bold;">Sahi: ${q.ans}</span><div class="expl-box">💡 ${q.expl}</div>`;
+        // Card styling for wrong attempts vs unattempted
+        card.className = `review-card ${isCorrect ? 'correct' : (isAttempted ? 'wrong' : '')}`;
+        card.innerHTML = `<b>Q.${i+1}: ${q.q}</b>${reviewImg}<br><span style="color:${isCorrect?'green':(isAttempted?'red':'#6b7280')}">Aapne: ${userAnswers[i] || 'Nahi kiya'}</span> | <span style="color:green; font-weight:bold;">Sahi: ${q.ans}</span><div class="expl-box">💡 ${q.expl}</div>`;
         revBox.appendChild(card);
     });
     
-    document.getElementById('final-score').innerHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${finalScore} / ${currentQuiz.length}</span>`;
+    // Decimal marks ko properly dikhane ke liye format kar rahe hain (e.g., 8.75)
+    let displayScore = finalScore % 1 !== 0 ? finalScore.toFixed(2) : finalScore;
+
+    let scoreHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${displayScore} / ${currentQuiz.length}</span>`;
+    
+    // Agar Vanrakshak test hai, toh detail break-down dikhayenge
+    if (isVanrakshak) {
+        let negativeCut = (wrongCount * 0.25).toFixed(2);
+        scoreHTML += `<br><span style="font-size: 15px; color: #ef4444; font-weight:600;">Right: ${rightCount} | Wrong: ${wrongCount} (-${negativeCut} Marks)</span>`;
+    }
+
+    document.getElementById('final-score').innerHTML = scoreHTML;
     switchScreen('result-screen');
 
-    const testName = document.getElementById('subject-label').innerText;
     if (testName.toLowerCase().includes("saturday") || testName.match(/(\d{2})-(\d{2})-(\d{2})/)) {
         setTimeout(() => {
             alert("टेस्ट देने के लिए धन्यवाद! 🙏\nकृपया अपना स्कोर सबमिट जरूर करें।");
@@ -243,8 +286,8 @@ function endQuiz() {
             method: 'POST',
             body: JSON.stringify({
                 name: studentName,
-                test: document.getElementById('subject-label').innerText,
-                score: finalScore,
+                test: testName,
+                score: displayScore,
                 total: currentQuiz.length
             })
         }).then(res => console.log("Score Sent!"))
@@ -289,7 +332,6 @@ function goHome() {
     }
 }
 
-// ✅ SHARE APP FUNCTION
 function shareApp() {
     const shareData = {
         title: 'Paramount Academy - ExamSpeed Math',

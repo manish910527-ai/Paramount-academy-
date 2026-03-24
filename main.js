@@ -10,23 +10,37 @@ let studentName = "";
 let qStatus = []; 
 let userAnswers = []; 
 
+// Variables for Instructions
+let pendingTestName = "";
+let pendingTestMins = 0;
+
 window.onload = function() {
+    // Dark mode check
+    if(localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('dark-btn').innerText = '☀️';
+    }
+
     document.getElementById('loading-overlay').style.display = 'flex';
     fetchData();
 };
 
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('darkMode', isDark);
+    document.getElementById('dark-btn').innerText = isDark ? '☀️' : '🌙';
+}
+
 function fetchData() {
-    console.log("Fetching Data...");
     fetch(API_URL).then(res => res.text()).then(data => {
         const json = JSON.parse(data.substring(47).slice(0, -2));
         
         allQuestions = json.table.rows.map(row => {
-            // Options ko pehle hi array mein nikal lenge
             let originalOpts = [row.c[1]?.v, row.c[2]?.v, row.c[3]?.v, row.c[4]?.v].filter(Boolean);
             let rawAns = row.c[5]?.v;
             let resolvedAns = rawAns;
 
-            // SMART CHECKING: Agar ans me "Option A" ya "A" likha hai, toh actual text set karenge
             if (rawAns) {
                 let ansStr = rawAns.toString().trim().toUpperCase();
                 if (ansStr === 'A' || ansStr === 'OPTION A' || ansStr === '1' || ansStr === 'OPTION 1') resolvedAns = originalOpts[0];
@@ -45,7 +59,6 @@ function fetchData() {
             };
         }).filter(i => i.q && i.q !== "Question");
         
-        console.log("Questions Loaded:", allQuestions.length);
         document.getElementById('loading-overlay').style.display = 'none';
 
         try {
@@ -53,12 +66,10 @@ function fetchData() {
             if(saved) { studentName = saved; showDashboard(saved); }
             else { document.getElementById('login-screen').style.display = 'block'; }
         } catch (error) {
-            console.log("Memory blocked, opening login normally.");
             document.getElementById('login-screen').style.display = 'block';
         }
 
     }).catch(err => {
-        console.error("Error:", err);
         document.querySelector('.loading-text').innerText = "Internet Error! Please Refresh.";
         document.querySelector('.loading-text').style.color = "red";
     });
@@ -71,7 +82,10 @@ function openTestSelector(baseSubject, mins) {
 
     if (availableTests.length === 0) return alert(`❌ '${baseSubject}' ke sawal abhi uplabdh nahi hain.`);
 
-    if (availableTests.length === 1) { startQuiz(availableTests[0], mins); return; }
+    if (availableTests.length === 1) { 
+        showInstructions(availableTests[0], mins); 
+        return; 
+    }
 
     const listContainer = document.getElementById('test-list-container');
     listContainer.innerHTML = "";
@@ -81,7 +95,7 @@ function openTestSelector(baseSubject, mins) {
         const btn = document.createElement('button');
         btn.className = 'test-list-btn';
         btn.innerText = `📝 ${testName}`; 
-        btn.onclick = () => { closeTestSelector(); startQuiz(testName, mins); };
+        btn.onclick = () => { closeTestSelector(); showInstructions(testName, mins); };
         listContainer.appendChild(btn);
     });
 
@@ -89,6 +103,31 @@ function openTestSelector(baseSubject, mins) {
 }
 
 function closeTestSelector() { document.getElementById('test-selector-modal').style.display = 'none'; }
+
+// NAYA: Pre-Test Instructions
+function showInstructions(testName, mins) {
+    pendingTestName = testName;
+    pendingTestMins = mins;
+
+    document.getElementById('inst-title').innerText = testName;
+    document.getElementById('inst-time').innerText = mins;
+    
+    // Check for negative marking rules based on text
+    let hasNegative = testName.toLowerCase().includes('vanrakshak');
+    document.getElementById('inst-neg').innerText = hasNegative ? 'Yes (-0.25 per wrong answer)' : 'No';
+    document.getElementById('inst-neg').style.color = hasNegative ? 'var(--danger)' : 'var(--success)';
+    
+    document.getElementById('agree-check').checked = false;
+    switchScreen('instructions-screen');
+}
+
+function verifyAndStart() {
+    if(!document.getElementById('agree-check').checked) {
+        alert("Please check the 'I am ready to begin' box.");
+        return;
+    }
+    startQuiz(pendingTestName, pendingTestMins);
+}
 
 function shuffleArray(array) {
     let newArray = [...array]; 
@@ -100,32 +139,6 @@ function shuffleArray(array) {
 }
 
 function startQuiz(exactSubjectName, mins) {
-    const dateMatch = exactSubjectName.match(/(\d{2})-(\d{2})-(\d{2})/);
-    const timeMatch = exactSubjectName.match(/\((\d+)\)/);
-
-    if (dateMatch) {
-        const day = parseInt(dateMatch[1], 10);
-        const month = parseInt(dateMatch[2], 10) - 1; 
-        const year = 2000 + parseInt(dateMatch[3], 10); 
-        
-        let hour = 0; 
-        if (timeMatch) {
-            hour = parseInt(timeMatch[1], 10); 
-        }
-
-        const scheduledTime = new Date(year, month, day, hour, 0, 0);
-        const now = new Date(); 
-
-        if (now < scheduledTime) {
-            let ampm = hour >= 12 ? 'PM' : 'AM';
-            let displayHour = hour > 12 ? hour - 12 : hour;
-            if (displayHour === 0) displayHour = 12;
-            
-            alert(`⏳ यह टेस्ट ${dateMatch[0]} को ${displayHour}:00 ${ampm} बजे लाइव होगा! कृपया प्रतीक्षा करें।`);
-            return; 
-        }
-    }
-
     let filteredQuestions = allQuestions.filter(i => i.sub === exactSubjectName);
     if(filteredQuestions.length === 0) return alert("Error: Questions not found!");
     
@@ -152,9 +165,7 @@ function loadQuestion() {
     if (q.img && q.img.length > 5) {
         let cleanUrl = q.img.trim();
         if (cleanUrl.includes("drive.google.com") && cleanUrl.includes("/view")) {
-             cleanUrl = cleanUrl.replace("/file/d/", "/uc?export=view&id=")
-                                .replace("/view?usp=sharing", "")
-                                .replace("/view?usp=drivesdk", "");
+             cleanUrl = cleanUrl.replace("/file/d/", "/uc?export=view&id=").replace("/view?usp=sharing", "").replace("/view?usp=drivesdk", "");
         }
         imageHTML = `<img src="${cleanUrl}" style="max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; display: block; border: 1px solid #ddd;" onerror="this.style.display='none'">`;
     }
@@ -212,18 +223,18 @@ function startTimer(m) {
     }, 1000);
 }
 
-function confirmSubmit() { if(confirm("Finish Test?")) endQuiz(); }
+function confirmSubmit() { if(confirm("Kya aap test finish karna chahte hain?")) endQuiz(); }
 
 function endQuiz() {
     clearInterval(timer);
     let finalScore = 0;
     let rightCount = 0;
     let wrongCount = 0;
+    let attempted = 0;
     const revBox = document.getElementById('review-box');
     revBox.innerHTML = "";
     
     const testName = document.getElementById('subject-label').innerText;
-    // NEGATIVE MARKING LOGIC: Check agar test Vanrakshak ka hai
     const isVanrakshak = testName.toLowerCase().includes('vanrakshak');
     
     currentQuiz.forEach((q, i) => {
@@ -234,15 +245,14 @@ function endQuiz() {
         let isAttempted = userAnswer !== "";
 
         if (isAttempted) {
+            attempted++;
             if (userAnswer === correctAnswer) {
                 isCorrect = true;
                 finalScore += 1;
                 rightCount++;
             } else {
                 wrongCount++;
-                if (isVanrakshak) {
-                    finalScore -= 0.25; // 0.25 negative marking apply ho rahi hai
-                }
+                if (isVanrakshak) finalScore -= 0.25; 
             }
         }
         
@@ -253,18 +263,14 @@ function endQuiz() {
         }
 
         const card = document.createElement('div');
-        // Card styling for wrong attempts vs unattempted
         card.className = `review-card ${isCorrect ? 'correct' : (isAttempted ? 'wrong' : '')}`;
         card.innerHTML = `<b>Q.${i+1}: ${q.q}</b>${reviewImg}<br><span style="color:${isCorrect?'green':(isAttempted?'red':'#6b7280')}">Aapne: ${userAnswers[i] || 'Nahi kiya'}</span> | <span style="color:green; font-weight:bold;">Sahi: ${q.ans}</span><div class="expl-box">💡 ${q.expl}</div>`;
         revBox.appendChild(card);
     });
     
-    // Decimal marks ko properly dikhane ke liye format kar rahe hain (e.g., 8.75)
     let displayScore = finalScore % 1 !== 0 ? finalScore.toFixed(2) : finalScore;
-
-    let scoreHTML = `🏆 ${studentName}<br><span style="font-size: 24px; color: #374151;">Marks: ${displayScore} / ${currentQuiz.length}</span>`;
+    let scoreHTML = `🏆 ${studentName}<br><span style="font-size: 24px;">Marks: ${displayScore} / ${currentQuiz.length}</span>`;
     
-    // Agar Vanrakshak test hai, toh detail break-down dikhayenge
     if (isVanrakshak) {
         let negativeCut = (wrongCount * 0.25).toFixed(2);
         scoreHTML += `<br><span style="font-size: 15px; color: #ef4444; font-weight:600;">Right: ${rightCount} | Wrong: ${wrongCount} (-${negativeCut} Marks)</span>`;
@@ -273,26 +279,26 @@ function endQuiz() {
     document.getElementById('final-score').innerHTML = scoreHTML;
     switchScreen('result-screen');
 
-    if (testName.toLowerCase().includes("saturday") || testName.match(/(\d{2})-(\d{2})-(\d{2})/)) {
-        setTimeout(() => {
-            alert("टेस्ट देने के लिए धन्यवाद! 🙏\nकृपया अपना स्कोर सबमिट जरूर करें।");
-        }, 500); 
-    }
+    // NAYA: Update Student Progress in Local Storage
+    updateStudentStats(rightCount, attempted);
+}
 
-    const adminUrl = "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें"; 
+// Stats tracking Logic
+function updateStudentStats(right, attempted) {
+    let stats = JSON.parse(localStorage.getItem('studentStats')) || { tests: 0, totalRight: 0, totalAttempted: 0 };
+    stats.tests += 1;
+    stats.totalRight += right;
+    stats.totalAttempted += attempted;
+    localStorage.setItem('studentStats', JSON.stringify(stats));
+}
+
+function loadDashboardStats() {
+    let stats = JSON.parse(localStorage.getItem('studentStats')) || { tests: 0, totalRight: 0, totalAttempted: 0 };
+    document.getElementById('stat-tests').innerText = stats.tests;
+    document.getElementById('stat-right').innerText = stats.totalRight;
     
-    if(adminUrl !== "यहाँ_अपना_WEB_APP_URL_पेस्ट_करें") {
-        fetch(adminUrl, {
-            method: 'POST',
-            body: JSON.stringify({
-                name: studentName,
-                test: testName,
-                score: displayScore,
-                total: currentQuiz.length
-            })
-        }).then(res => console.log("Score Sent!"))
-          .catch(err => console.error("Error:", err));
-    }
+    let acc = stats.totalAttempted > 0 ? Math.round((stats.totalRight / stats.totalAttempted) * 100) : 0;
+    document.getElementById('stat-acc').innerText = `${acc}%`;
 }
 
 function login() {
@@ -303,10 +309,14 @@ function login() {
     showDashboard(n);
 }
 
-function showDashboard(n) { document.getElementById('display-name').innerText = n; switchScreen('dashboard-screen'); }
+function showDashboard(n) { 
+    document.getElementById('display-name').innerText = n; 
+    loadDashboardStats(); // Load stats when dashboard opens
+    switchScreen('dashboard-screen'); 
+}
 
 function switchScreen(id) {
-    ['login-screen', 'dashboard-screen', 'quiz-screen', 'result-screen'].forEach(s => {
+    ['login-screen', 'dashboard-screen', 'instructions-screen', 'quiz-screen', 'result-screen'].forEach(s => {
         const el = document.getElementById(s);
         if(el) el.style.display = (s === id) ? 'block' : 'none';
         if(id === 'dashboard-screen') document.getElementById('test-selector-modal').style.display = 'none';
@@ -314,7 +324,10 @@ function switchScreen(id) {
 }
 
 function logout() { 
-    try { localStorage.clear(); } catch(e) {}
+    try { 
+        localStorage.removeItem('studentName');
+        localStorage.removeItem('studentStats'); // Logout par stats reset
+    } catch(e) {}
     location.reload(); 
 }
 
@@ -325,7 +338,7 @@ function goHome() {
             clearInterval(timer);
             switchScreen('dashboard-screen');
         }
-    } else if (document.getElementById('result-screen').style.display === 'block') {
+    } else if (document.getElementById('result-screen').style.display === 'block' || document.getElementById('instructions-screen').style.display === 'block') {
         switchScreen('dashboard-screen');
     } else if (document.getElementById('test-selector-modal').style.display === 'flex') {
         closeTestSelector();
@@ -334,16 +347,16 @@ function goHome() {
 
 function shareApp() {
     const shareData = {
-        title: 'Paramount Academy - ExamSpeed Math',
-        text: '🔥 Free Online Mock Tests for Maths, Reasoning, GK & Science! Practice now:',
-        url: 'https://manish910527-ai.github.io/Paramount-academy-/'
+        title: 'Paramount Academy App',
+        text: '🔥 Free Online Mock Tests for Maths, Reasoning, GK & Science!',
+        url: window.location.href
     };
     
     if (navigator.share) {
-        navigator.share(shareData).catch(err => console.error("Error sharing:", err));
+        navigator.share(shareData).catch(err => console.error(err));
     } else {
         navigator.clipboard.writeText(shareData.url).then(() => {
-            alert("✅ App Link Copied! Ab ise WhatsApp par apne doston ko bhejein.");
+            alert("✅ App Link Copied! Ab ise WhatsApp par bhejein.");
         });
     }
-            }
+    }
